@@ -9,7 +9,7 @@ function drawTable(parent) {
     heading1 = document.createElement("th");
     heading1.innerText = "BANK-ID";
     heading2 = document.createElement("th");
-    heading2.innerText = "FEZ-ID";
+    heading2.innerText = "ACC-ID";
     heading3 = document.createElement("th");
     header.append(heading1);
     header.append(heading2);
@@ -56,19 +56,19 @@ function deleteRow(bankId) {
 
 const isValidId = (id) => /^[a-zA-Z0-9]+$/.test(id);
 
-function validateNewIds(newBankId, newFEZId) {
+function validateNewIds(newBankId, newAccId) {
     errors = []
     if(!newBankId) {
         errors.push("Bank ID is required.");
     }
-    if(!newFEZId) {
-        errors.push("FEZ ID is required.");
+    if(!newAccId) {
+        errors.push("Accounting ID is required.");
     }
     if(!isValidId(newBankId)) {
         errors.push("Bank ID is invalid. Must use characters A-Z and 0-9");
     }
-    if(!isValidId(newFEZId)) {
-        errors.push("FEZ ID is invalid. Must use characters A-Z and 0-9");
+    if(!isValidId(newAccId)) {
+        errors.push("Accounting ID is invalid. Must use characters A-Z and 0-9");
     }
     return errors;
 }
@@ -110,30 +110,30 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("add-row-btn").addEventListener("click", () => {
         resetErrors();
         const newBankId = document.getElementById("new-row-bank-input").value.trim();
-        const newFEZId = document.getElementById("new-row-fez-input").value.trim();
-        const errors = validateNewIds(newBankId, newFEZId);
+        const newAccId = document.getElementById("new-row-acc-input").value.trim();
+        const errors = validateNewIds(newBankId, newAccId);
         if(errors.length) {
             return drawErrors(errors);
         }
         chrome.storage.local.get(['data'], (results) => {
-            const errors = []
+            const errors = [];
             const data = results.data;
             for(let i=0; i<data.length; i++) {
                 const row = data[i];
                 const bankId = row[0];
-                const fezId = row[1];
+                const accId = row[1];
                 if(bankId === newBankId) {
-                    errors.push(`Bank ID in use: ${newBankId}`)
+                    errors.push(`Bank ID in use: ${newBankId}`);
                 }
-                if(fezId === newFEZId) {
-                    errors.push(`FEZ ID in use: ${newFEZId}`)
+                if(accId === newAccId) {
+                    errors.push(`Account ID in use: ${newAccId}`);
                 }
             }
             if(errors.length) {
                 return drawErrors(errors);
             }
 
-            data.push([newBankId, newFEZId])
+            data.push([newBankId, newAccId]);
             chrome.storage.local.set({data}, () => {
                 location.reload();
             });
@@ -143,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("export-to-csv-anchor").addEventListener("click", () => {
         chrome.storage.local.get(['data'], (results) => {
             const data = results.data;
-            data.unshift(['BANK ID', 'FEZ ID']);
+            data.unshift(['BANK ID', 'ACCOUNTING ID']);
             const tempLink = document.createElement("a");
             tempLink.download = "accounts.csv";
             const csv = data.map((v) => {return v.join(',')}).join('\n');
@@ -166,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.get(['data'], (results) => {
             const existingRows = results.data;
             const existingBankIds = existingRows.map(r=>r[0])
-            const existingFEZIds = existingRows.map(r=>r[1])
+            const existingAccIds = existingRows.map(r=>r[1])
 
             const reader = new FileReader();
             reader.readAsText(file, "UTF-8");
@@ -180,20 +180,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     const vals = row.split(",")
                     const newBankId = vals[0].trim();
-                    const newFEZId = vals[1].trim();
+                    const newAccId = vals[1].trim();
                     if(existingBankIds.indexOf(newBankId) != -1) {
                         errors.push("Bank id already in use: " + newBankId)
                     }
-                    if(existingFEZIds.indexOf(newFEZId) != -1) {
-                        errors.push("FEZ id already in use: " + newFEZId)
+                    if(existingAccIds.indexOf(newAccId) != -1) {
+                        errors.push("Accounting id already in use: " + newAccId)
                     }
                     if(!isValidId(newBankId)) {
                         errors.push("Invalid Bank ID. Must use characters A-Z 0-9 " + newBankId)
                     }
-                    if(!isValidId(newFEZId)) {
-                        errors.push("Invalid FEZ ID. Must use characters A-Z 0-9 " + newBankId)
+                    if(!isValidId(newAccId)) {
+                        errors.push("Invalid Accounting ID. Must use characters A-Z 0-9 " + newBankId)
                     }
-                    newRows.push([newBankId, newFEZId])
+                    newRows.push([newBankId, newAccId])
                 });
                 if(errors.length) {
                     return alert("An Error Occured\n\n" + errors.join("\n"))

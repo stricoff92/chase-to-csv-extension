@@ -4,9 +4,9 @@
 
  - `onPage`  boolean flag that indicates whether a tab is on the accounts page
  - `running` boolean flag that indicates whether data is being scraped
- - `data`    associations of chase <-> FEZ accounts
+ - `data`    associations of chase <-> Accounting accounts
                 [
-                    [CHASE_ID, FEZ_ID],
+                    [CHASE_ID, ACC_ID],
                     ...
                 ]
 

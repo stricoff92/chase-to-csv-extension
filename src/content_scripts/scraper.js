@@ -16,7 +16,7 @@ async function getRunning() {
 async function getLookupTable() {
     return new Promise((resolve) => {
         chrome.storage.local.get(['data'], (result) => {
-            /*  Mapping of BANK-ID => FEZ-ID
+            /*  Mapping of BANK-ID => ACC-ID
             */
             resolve(new Map(result.data));
         });
@@ -166,19 +166,18 @@ async function scrapeData(startDate, endDate, lookup, linksClicked) {
                 });
                 return;
             }
-            const hasFezId = lookup.has(chaseId);
-            if(!hasFezId) {
-                log("no FEZ account found for this account");
+            if(!lookup.has(chaseId)) {
+                log("no ACCOUNTING ID found for this account");
                 document.querySelector("#requestAccounts").click();
                 setTimeout(() => {
                     scrapeData(startDate, endDate, lookup, linksClicked);
                 });
                 return;
             }
-            const fezId = lookup.get(chaseId);
-            log("row has associated FEZ account " + fezId);
+            const accId = lookup.get(chaseId);
+            log("row has associated ACC account " + accId);
             setTimeout(()=> {
-                scrapeTransactionData(0, startDate, endDate, lookup, linksClicked, fezId, chaseId);
+                scrapeTransactionData(0, startDate, endDate, lookup, linksClicked, accId, chaseId);
             });
         });
         return;
@@ -189,7 +188,7 @@ async function scrapeData(startDate, endDate, lookup, linksClicked) {
 }
 
 
-function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksClicked, FEZAccountId, ChaseAccountId) {
+function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId) {
 
     // Check for any takeovers
     const continueWithActivity = document.getElementById("continueWithActivity");
@@ -204,7 +203,7 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
         attemptNumber++;
         if(attemptNumber < 100) {
             setTimeout(()=>{
-                scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksClicked, FEZAccountId, ChaseAccountId)
+                scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId)
             }, 120);
         }
         return;
@@ -216,7 +215,7 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
         attemptNumber++
         setTimeout(()=>{
             scrapeTransactionData(
-                attemptNumber, startDate, endDate, lookup, linksClicked, FEZAccountId, ChaseAccountId)
+                attemptNumber, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId)
         }, 120);
         return;
     }
@@ -243,7 +242,7 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
         if (seeMoreBtn) {
             seeMoreBtn.click();
             setTimeout(()=>{
-                scrapeTransactionData(0, startDate, endDate, lookup, linksClicked, FEZAccountId, ChaseAccountId);
+                scrapeTransactionData(0, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId);
             }, 50);
             return;
         }
@@ -281,7 +280,7 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
             event: "rowData",
             amountFloat,
             descriptionText,
-            FEZAccountId,
+            AccountingId,
             ChaseAccountId,
         }
         chrome.runtime.sendMessage(payload, ()=>{})
