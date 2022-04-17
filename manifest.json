@@ -1,0 +1,29 @@
+{
+  "name": "Havens-Chrome-Extention",
+  "description": "CSV Generating Extention",
+  "version": "0.1",
+  "manifest_version": 3,
+  "icons": {
+    "128": "images/icon128.png"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "host_permissions": [
+    "https://*.chase.com/*"
+  ],
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*.chase.com/*"],
+      "js": ["src/content_scripts/scraper.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  }
+}

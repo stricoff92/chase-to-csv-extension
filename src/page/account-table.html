@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                font-family: arial;
+                padding: 1rem;
+            }
+            .hidden {
+                display: none;
+            }
+
+            table {
+                border-collapse: collapse;
+            }
+            th, td {
+                border: 1px solid #9e9e9e;
+                padding: 0.4rem;
+            }
+            th {
+                background-color: #272727;
+                color: #ffffff;
+                font-size: 130%;
+            }
+            td {
+                font-size: 120%;
+            }
+            #add-account-container {
+                margin-bottom: 1rem;
+                padding: 0.5rem;
+                background-color: #b8bdff;
+                border-radius: 12px;
+            }
+            .form-row {
+                margin-bottom: 0.5rem;
+            }
+            #add-row-btn {
+                font-size: 120%;
+            }
+            #error-container {
+                color: #ff0000;
+                font-weight: bold;
+                background-color: #ffd1d1;
+                padding: 0.3rem;
+                border: 1px solid #ff0000;
+            }
+            #storage-usage-container {
+                margin-bottom: 1rem;
+                margin-left: 1rem;
+                padding: 0.5rem;
+                background-color: #b8ffd8;
+                border-radius: 12px;
+            }
+            #import-csv-container {
+                margin-bottom: 1rem;
+                margin-left: 1rem;
+                padding: 0.5rem;
+                background-color: #b8bdff;
+                border-radius: 12px;
+            }
+            #percentage-usage {
+                font-weight: bold;
+            }
+            #download-as-csv-container {
+                margin-bottom: 0.25rem;
+            }
+        </style>
+        <script src="/src/page/account-table.js">
+        </script>
+    </head>
+    <body>
+        <h1>
+            Chase / FEZ Accounts<hr>
+        </h1>
+        <div style="display:flex;">
+            <div id="add-account-container">
+                <h2>Add an Account<hr></h2>
+                <div id="error-container" class="form-row hidden">
+                </div>
+                <div class="form-row">
+                    Bank<br><input placeholder="Bank Account ID" id="new-row-bank-input">
+                </div>
+                <div class="form-row">
+                    FEZ<br><input placeholder="FEZ Account ID" id="new-row-fez-input">
+                </div>
+                <div class="form-row">
+                    <button id="add-row-btn">
+                        Save
+                    </button>
+                </div>
+            </div>
+            <div id="import-csv-container">
+                <h2>Import CSV<hr></h2>
+                <p>Importing will fail if duplicates are found.</p>
+                <div class="form-row">
+                    <input
+                        type="file"
+                        id="import-file-picker-input"
+                        accept="text/csv"
+                    >
+                </div>
+                <div class="form-row">
+                    <i>Skip First Row</i>
+                    <input id="skip-first-row-input" type="checkbox">
+                </div>
+                <div class="form-row">
+                    <button id="import-csv-btn">
+                        Import
+                    </button>
+                </div>
+            </div>
+            <div id="storage-usage-container">
+                <h2>Local Storage Usage<hr></h2>
+                <div>
+                    <span id="percentage-usage"></span> <strong>%</strong>
+                </div>
+                <progress id="storage-usage-progress"></progress>
+            </div>
+        </div>
+        <div id="download-as-csv-container">
+            <a href="#" id="export-to-csv-anchor">Export to CSV</a>
+        </div>
+        <div id="table-container">
+        </div>
+    </body>
+</html>
+

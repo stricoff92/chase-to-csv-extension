@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                font-family: arial;
+                background-color: #0a0054;
+                color: #ffffff;
+                min-width: 400px;
+                min-height: 300px;
+                padding: 8px;
+            }
+            .hidden {
+                display: none;
+            }
+            .popup-container {
+                margin: 0.6rem;
+                padding: 0.4rem;
+                background-color: #0c0065;
+                border-radius: 8px;
+            }
+            a {
+                color: white;
+            }
+            .form-row {
+                margin: 0.5rem;
+            }
+            #start-scrape-error-area {
+                color: red;
+                font-weight: bold;
+                font-size: 125%;
+                padding: 8px;
+                background-color: #ffd6d6;
+                border: 1px solid red;
+            }
+
+            .loader {
+                border: 14px solid #ffcece;
+                border-top: 14px solid #ff0000;
+                border-radius: 50%;
+                width: 35px;
+                height: 35px;
+                animation: spin 0.5s linear infinite;
+                margin-bottom: 1rem;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+        <script src="popup.js">
+        </script>
+    </head>
+    <body>
+        <h1>
+            Chase / FEZ
+        </h1>
+        <div class="popup-container">
+            <a id="view-accounts-anchor" href="#">View Accounts</a>
+        </div>
+        <div id="reset-btn-container" class="popup-container hidden">
+            <button id="reset-on-page-btn">Reset</button>
+        </div>
+        <div id="page-not-found-container" class="popup-container hidden">
+            <h3>Not on Account Page</h3>
+        </div>
+        <div id="page-found-container" class="popup-container hidden">
+            <h3>Start Bank Data Extraction</h3>
+            <div id="start-scrape-error-area" class="form-row hidden">
+
+            </div>
+            <div class="form-row">
+                From<br/><input id="new-scrape-start-date-input" type="date">
+            </div>
+            <div class="form-row">
+                To<br/><input id="new-scrape-end-date-input" type="date">
+            </div>
+            <div class="form-row">
+                <button id="start-scrape-btn">
+                    Start
+                </button>
+            </div>
+        </div>
+        <div id="scrape-running-container" class="popup-container hidden">
+            <h2>Running</h2>
+            <div>
+                <img src="">
+            </div>
+            <div class="form-row">
+                <div class="loader"></div>
+            </div>
+            <div class="form-row">
+                <button id="cancel-crawl-btn">
+                    Cancel
+                </button>
+            </div>
+        </div>
+      </body>
+</html>
