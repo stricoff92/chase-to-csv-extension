@@ -76,13 +76,16 @@ document.addEventListener("DOMContentLoaded", () => {
         sendResponse(true);
     });
 
-    chrome.storage.local.get(['onPage', 'running'], (result) => {
+    chrome.storage.local.get(['onPage', 'running', 'previousFilter'], (result) => {
         if(result.onPage && !result.running) {
             setPopupOnPage();
-
+            if(result.previousFilter) {
+                document.getElementById("new-scrape-row-desc-filter").value = (
+                    result.previousFilter
+                );
+            }
         } else if (result.onPage && result.running) {
             setPopupRunning();
-
         } else {
             setPopupOffPage();
         }
@@ -94,12 +97,26 @@ document.addEventListener("DOMContentLoaded", () => {
         errorArea.innerHTML = "";
         const startDate = document.getElementById("new-scrape-start-date-input").value;
         const endDate = document.getElementById("new-scrape-end-date-input").value;
-        errors = []
+        const maxAccounts = parseInt(
+            document.getElementById("start-scrape-max-rows-input").value
+        );
+        const rowFilters = JSON.parse(
+            document.getElementById("new-scrape-row-desc-filter").value
+            || "[]"
+        );
+        chrome.storage.local.set({
+            previousFilter: JSON.stringify(rowFilters)
+        });
+
+        let errors = []
         if(!startDate) {
             errors.push("Start date is required.");
         }
         if(!endDate) {
             errors.push("End date is required.");
+        }
+        if(!maxAccounts || maxAccounts < 1) {
+            errors.push("Max accounts must be positive number.");
         }
 
         if (errors.length) {
@@ -131,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             chrome.tabs.sendMessage(
                 tabs[0].id,
-                {event: "scrapeStarted", startDate, endDate},
+                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters},
                 ()=>{
                     setPopupRunning();
                 },
