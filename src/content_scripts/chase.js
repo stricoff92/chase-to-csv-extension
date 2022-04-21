@@ -30,7 +30,7 @@ function main () {
     const checkTableTimer = setInterval(checkForTable, 300);
     var timedOut;
     const timedOutCallbackTimer = setTimeout(()=>{
-        log("<EVENT timedOut>");
+        log("timed out");
         timedOut = true;
     }, 12000)
 
@@ -58,8 +58,6 @@ function main () {
                 if(isRunning) {
                     return;
                 }
-                let linksClicked = [];
-                let results = [];
                 const lookup = await getLookupTable();
                 if(lookup.size == 0) {
                     return alert("Cannot scrape, the lookup table is empty.");
@@ -74,8 +72,8 @@ function main () {
                                 maxAccounts: request.maxAccounts,
                                 rowFilters: request.rowFilters,
                                 lookup,
-                                linksClicked,
-                                results,
+                                linksClicked: [],
+                                results: [],
                                 skipped: [],
                             }
                         );
