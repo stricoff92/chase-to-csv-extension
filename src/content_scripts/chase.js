@@ -1,6 +1,8 @@
 
 const log = (msg) => {
-    console.log("HCE: " + JSON.stringify(msg));
+    const data = JSON.stringify(msg);
+    console.log("HCE: " + data);
+    chrome.runtime.sendMessage({event: "debugMessage", data});
 }
 log("content_scripts/scraper.js running");
 
@@ -160,9 +162,14 @@ async function scrapeData(scrapeKwargs) {
         const rowHeader = tr.querySelector(".data-table-for-accounts__row-header");
         const rowHeaderText = rowHeader.innerText
         if(scrapeKwargs.linksClicked.indexOf(rowHeaderText) != -1) {
-            log("skipping row " + rowHeaderText)
             continue;
         }
+
+        // update progress bar
+        chrome.runtime.sendMessage({ event: "progressBar", data: {
+            value: i + 1,
+            max: tableRows.length,
+        }});
 
         // Navigate to the account page
         log("checking row " + rowHeaderText);
