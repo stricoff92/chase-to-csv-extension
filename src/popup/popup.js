@@ -118,7 +118,14 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        chrome.tabs.query({active: true, currentWindow:true}, (tabs) => {
+        const tabQueryParams = {
+            active: true,
+            currentWindow: true,
+            url: [
+                "https://*.chase.com/*",
+            ],
+        }
+        chrome.tabs.query(tabQueryParams, (tabs) => {
             if(tabs.length == 0) {
                 return;
             }
