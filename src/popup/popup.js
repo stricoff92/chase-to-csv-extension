@@ -36,6 +36,16 @@ function setPopupOffPage() {
     bodyElem.style.border = "none";
 }
 
+function updateProgress(value, max) {
+    const progress = document.getElementById("progress-bar");
+    progress.value = value;
+    progress.max = max;
+}
+
+function updateDebugMessage(msg) {
+    document.getElementById("debug-message").innerText = msg;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
         chrome.storage.local.set({onPage:false});
@@ -56,6 +66,14 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (request.event === "scrapeStopped") {
             setPopupOnPage();
         }
+        else if (request.event === "progressBar") {
+            updateProgress(request.data.value, request.data.max);
+        }
+        else if (request.event === "debugMessage") {
+            updateDebugMessage(request.data);
+        }
+
+        sendResponse(true);
     });
 
     chrome.storage.local.get(['onPage', 'running'], (result) => {

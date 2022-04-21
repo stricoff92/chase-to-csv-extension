@@ -7,7 +7,7 @@
                 background-color: #0a0054;
                 color: #ffffff;
                 min-width: 400px;
-                min-height: 300px;
+                min-height: 400px;
                 padding: 8px;
             }
             .hidden {
@@ -33,20 +33,14 @@
                 background-color: #ffd6d6;
                 border: 1px solid red;
             }
-
-            .loader {
-                border: 14px solid #ffcece;
-                border-top: 14px solid #ff0000;
-                border-radius: 50%;
-                width: 35px;
+            #progress-bar {
                 height: 35px;
-                animation: spin 0.5s linear infinite;
-                margin-bottom: 1rem;
-            }
+                width: 100%;
 
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+            }
+            #debug-message {
+                color: white;
+                font-size: 150%;
             }
         </style>
         <script src="popup.js">
@@ -84,16 +78,17 @@
         </div>
         <div id="scrape-running-container" class="popup-container hidden">
             <h2>Running</h2>
-            <div>
-                <img src="">
-            </div>
-            <div class="form-row">
-                <div class="loader"></div>
-            </div>
             <div class="form-row">
                 <button id="cancel-crawl-btn">
                     Cancel
                 </button>
+            </div>
+            <div id="progress-container">
+                <progress id="progress-bar"></progress>
+            </div>
+            <div>
+                <p id="debug-message">
+                </p>
             </div>
         </div>
       </body>
