@@ -77,13 +77,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     chrome.storage.local.get(['onPage', 'running', 'previousFilter'], (result) => {
+        if(result.previousFilter) {
+            document.getElementById("new-scrape-row-desc-filter").value = (
+                result.previousFilter
+            );
+        }
         if(result.onPage && !result.running) {
             setPopupOnPage();
-            if(result.previousFilter) {
-                document.getElementById("new-scrape-row-desc-filter").value = (
-                    result.previousFilter
-                );
-            }
         } else if (result.onPage && result.running) {
             setPopupRunning();
         } else {
