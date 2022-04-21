@@ -101,14 +101,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         chrome.tabs.query({active: true, currentWindow:true}, (tabs) => {
+            if(tabs.length == 0) {
+                return;
+            }
             chrome.tabs.sendMessage(
                 tabs[0].id,
                 {event: "scrapeStarted", startDate, endDate},
-                (resp)=>{
-                    if(resp) {
-                        chrome.storage.local.set({running: true});
-                        setPopupRunning();
-                    }
+                ()=>{
+                    setPopupRunning();
                 },
             )
         });

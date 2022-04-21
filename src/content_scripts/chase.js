@@ -52,17 +52,32 @@ function main () {
             console.log("received event to start scraping");
             console.log(request);
             if(onPage) {
-                sendResponse(true);
+                const isRunning = await getRunning();
+                if(isRunning) {
+                    return;
+                }
                 let linksClicked = [];
                 const lookup = await getLookupTable();
-                console.log({lookup});
-                setTimeout(()=>{
-                    scrapeData(
-                        request.startDate, request.endDate, lookup, linksClicked,
-                    );
-                }, 500);
+                if(lookup.size == 0) {
+                    return alert("Cannot scrape, the lookup table is empty.");
+                }
+                sendResponse(true);
+                chrome.storage.local.set({running: true}, ()=>{
+                    setTimeout(()=>{
+                        scrapeData(
+                            {
+                                startDate: request.startDate,
+                                endDate: request.endDate,
+                                lookup,
+                                linksClicked,
+                            }
+                        );
+                    }, 250);
+                });
             }
         }
+        // // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
+        return true;
     });
 
 }
@@ -75,24 +90,24 @@ function processEventFoundTable() {
             chrome.storage.local.set({onPage: true});
             chrome.runtime.sendMessage({event: "onPage"});
         }
-    })
+    });
 }
 
 function confirmIfFalsy(value, message) {
     if(!value) {
         if(!confirm(message)) {
-            throw new Error("User Exit")
+            throw new Error("User Exit");
         }
     }
 }
 
 function clickSeeAllAccountsLinkIfItsThere() {
-    const element = document.querySelector("#seeAllAccountsAG1Table")
+    const element = document.querySelector("#seeAllAccountsAG1Table");
     if(!element) {
-        log("could not find link to view all accounts")
+        log("could not find link to view all accounts");
         return;
     }
-    log("clicking see all accounts link")
+    log("clicking see all accounts link");
     element.click();
 }
 
@@ -103,25 +118,25 @@ function canViewMoreAccounts() {
 function getChaseCurrentAccountNumber() {
     const res = /accountId=\d+/.exec(location.hash);
     if(res) {
-        return res[0].split("=")[1]
+        return res[0].split("=")[1];
     }
 }
 
-async function scrapeData(startDate, endDate, lookup, linksClicked) {
+async function scrapeData(scrapeKwargs) {
     log("scrapeData running, checking storage for running flag")
     const running = await getRunning();
-    console.log({running})
+    console.log({ running });
     if(!running) {
-        log("running flag=false, bye")
+        log("running flag=false, bye");
         return;
     }
 
     // Wait for table to load
     const tableContainer = document.getElementById("accountsTableAG1Table0");
     if(!tableContainer) {
-        log("could not find table container, wating")
+        log("could not find table container, waiting")
         setTimeout(()=>{
-            scrapeData(startDate, endDate, lookup, linksClicked)
+            scrapeData(scrapeKwargs)
         }, 200);
         return
     }
@@ -131,7 +146,7 @@ async function scrapeData(startDate, endDate, lookup, linksClicked) {
     if(canViewMoreAccounts()){
         log("waiting for full account list")
         setTimeout(()=>{
-            scrapeData(startDate, endDate, lookup, linksClicked);
+            scrapeData(scrapeKwargs);
         }, 100);
         return;
     }
@@ -144,14 +159,14 @@ async function scrapeData(startDate, endDate, lookup, linksClicked) {
         const tr = tableRows[i];
         const rowHeader = tr.querySelector(".data-table-for-accounts__row-header");
         const rowHeaderText = rowHeader.innerText
-        if(linksClicked.indexOf(rowHeaderText) != -1) {
+        if(scrapeKwargs.linksClicked.indexOf(rowHeaderText) != -1) {
             log("skipping row " + rowHeaderText)
             continue;
         }
 
         // Navigate to the account page
         log("checking row " + rowHeaderText);
-        linksClicked.push(rowHeaderText);
+        scrapeKwargs.linksClicked.push(rowHeaderText);
         tr.querySelector("a").click();
 
         // Check if extension has bank account number saved.
@@ -159,27 +174,27 @@ async function scrapeData(startDate, endDate, lookup, linksClicked) {
             const chaseId = getChaseCurrentAccountNumber();
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
-                log("Could not find account number, skipping.")
+                log("Could not find bank account id in URL, skipping.")
                 document.querySelector("#requestAccounts").click();
                 setTimeout(() => {
-                    scrapeData(startDate, endDate, lookup, linksClicked);
+                    scrapeData(scrapeKwargs);
                 });
                 return;
             }
-            if(!lookup.has(chaseId)) {
+            if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
                 document.querySelector("#requestAccounts").click();
                 setTimeout(() => {
-                    scrapeData(startDate, endDate, lookup, linksClicked);
+                    scrapeData(scrapeKwargs);
                 });
                 return;
             }
-            const accId = lookup.get(chaseId);
-            log("row has associated ACC account " + accId);
+            const accountingId = scrapeKwargs.lookup.get(chaseId);
+            log("row has associated ACC account " + accountingId);
             setTimeout(()=> {
-                scrapeTransactionData(0, startDate, endDate, lookup, linksClicked, accId, chaseId);
+                scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
             });
-        });
+        }, 200);
         return;
     }
     chrome.storage.local.set({running: false}, ()=> {
@@ -188,7 +203,10 @@ async function scrapeData(startDate, endDate, lookup, linksClicked) {
 }
 
 
-function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId) {
+async function scrapeTransactionData(scrapeKwargs) {
+
+    const accountLinkHeader = scrapeKwargs.linksClicked[scrapeKwargs.linksClicked.length - 1];
+    const lastName = accountLinkHeader.split(" ")[0];
 
     // Check for any takeovers
     const continueWithActivity = document.getElementById("continueWithActivity");
@@ -200,28 +218,23 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
     // Wait for table to load, or timeout.
     const table = document.getElementById('activityTableslideInActivity');
     if (!table) {
-        attemptNumber++;
-        if(attemptNumber < 100) {
-            setTimeout(()=>{
-                scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId)
-            }, 120);
-        }
+        setTimeout(()=>{
+            scrapeTransactionData(scrapeKwargs)
+        }, 120);
         return;
     }
 
     // Waiting for "see all activity" rows to load
     const loaderElem = document.querySelector(".loader-section");
     if(loaderElem) {
-        attemptNumber++
         setTimeout(()=>{
-            scrapeTransactionData(
-                attemptNumber, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId)
+            scrapeTransactionData(scrapeKwargs);
         }, 120);
         return;
     }
 
-    const startDateObj = parseISODateString(startDate);
-    const endDateObj = parseISODateString(endDate);
+    const startDateObj = parseISODateString(scrapeKwargs.startDate);
+    const endDateObj = parseISODateString(scrapeKwargs.endDate);
 
     // Keep clicking "See more activity" until
     //  - oldest transaction date < startDate
@@ -237,12 +250,12 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
             oldestDate = parseChaseDateString(rowDateStr);
         }
     }
-    if(oldestDate > startDate) {
+    if(oldestDate >= startDateObj) {
         const seeMoreBtn = document.getElementById("seeMore");
         if (seeMoreBtn) {
             seeMoreBtn.click();
             setTimeout(()=>{
-                scrapeTransactionData(0, startDate, endDate, lookup, linksClicked, AccountingId, ChaseAccountId);
+                scrapeTransactionData(scrapeKwargs);
             }, 50);
             return;
         }
@@ -272,25 +285,27 @@ function scrapeTransactionData(attemptNumber, startDate, endDate, lookup, linksC
             break;
         }
 
-        const descriptionText = abbreviateDescription(row.querySelector("td.description").innerText);
+        const descriptionText = row.querySelector("td.description").innerText;
         const amountText = row.querySelector("td.amount").innerText;
-        const amountFloat = parseFloat(amountText.replace("$", ""));
+        const amountCents = Math.round(parseFloat(amountText.replace("$", "")) * 100);
 
-        payload = {
-            event: "rowData",
-            amountFloat,
+        processRow({
+            amountCents,
             descriptionText,
-            AccountingId,
-            ChaseAccountId,
-        }
-        chrome.runtime.sendMessage(payload, ()=>{})
+            lastName,
+            accountingId: scrapeKwargs.accountingId,
+            chaseId: scrapeKwargs.chaseId,
+        });
     }
+
+    delete scrapeKwargs.accountingId;
+    delete scrapeKwargs.chaseId;
 
     // Go back to accounts list
     document.querySelector("#requestAccounts").click();
     setTimeout(()=>{
-        scrapeData(startDate, endDate, lookup, linksClicked);
-    })
+        scrapeData(scrapeKwargs);
+    });
 
 }
 
@@ -336,4 +351,21 @@ function parseISODateString(dateString) {
 
 function abbreviateDescription(descr) {
     return descr;
+}
+
+function processRow(row) {
+    console.log({processingRow: row});
+
+    // check if we should skip
+    const desc = row.descriptionText.toLowerCase()
+    if(
+        desc.indexOf("online transfer") != -1
+        && (
+            desc.indexOf("8759") != -1
+            || desc.indexOf("9031") != -1
+        )
+    ) {
+        log("skipping transfer row " + desc);
+        return;
+    }
 }
