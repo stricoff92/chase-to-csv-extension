@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
             url: [
                 "https://*.chase.com/*",
             ],
-        }
+        };
         chrome.tabs.query(tabQueryParams, (tabs) => {
             if(tabs.length == 0) {
                 return;
