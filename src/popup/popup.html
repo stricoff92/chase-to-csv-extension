@@ -42,6 +42,24 @@
                 color: white;
                 font-size: 150%;
             }
+            #new-scrape-row-desc-filter {
+                width: 100%;
+            }
+            #start-scrape-btn {
+                margin-top: 0.6rem;
+                font-weight: bold;
+                font-size: 150%;
+                background-color:#d1cbff;
+                color:#0a0054;
+                border-radius: 10px;
+                padding:12px;
+                cursor: pointer;
+            }
+            #start-scrape-btn:hover {
+                cursor: pointer;
+                background-color:#b3a9ff;
+                color:#0a0054;
+            }
         </style>
         <script src="popup.js">
         </script>
@@ -69,6 +87,14 @@
             </div>
             <div class="form-row">
                 To<br/><input id="new-scrape-end-date-input" type="date">
+            </div>
+            <div class="form-row">
+                Row Desc Filters<br/>
+                <textarea id="new-scrape-row-desc-filter"></textarea>
+            </div>
+            <div class="form-row">
+                Max Accounts<br/>
+                <input value="1000" type="number" id="start-scrape-max-rows-input">
             </div>
             <div class="form-row">
                 <button id="start-scrape-btn">

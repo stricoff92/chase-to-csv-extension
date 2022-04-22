@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         chrome.storage.local.get(['data'], (results) => {
             const errors = [];
-            const data = results.data;
+            const data = results.data || [];
             for(let i=0; i<data.length; i++) {
                 const row = data[i];
                 const bankId = row[0];

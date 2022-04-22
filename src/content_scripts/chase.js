@@ -30,7 +30,7 @@ function main () {
     const checkTableTimer = setInterval(checkForTable, 300);
     var timedOut;
     const timedOutCallbackTimer = setTimeout(()=>{
-        log("<EVENT timedOut>");
+        log("timed out");
         timedOut = true;
     }, 12000)
 
@@ -58,7 +58,6 @@ function main () {
                 if(isRunning) {
                     return;
                 }
-                let linksClicked = [];
                 const lookup = await getLookupTable();
                 if(lookup.size == 0) {
                     return alert("Cannot scrape, the lookup table is empty.");
@@ -70,8 +69,12 @@ function main () {
                             {
                                 startDate: request.startDate,
                                 endDate: request.endDate,
+                                maxAccounts: request.maxAccounts,
+                                rowFilters: request.rowFilters,
                                 lookup,
-                                linksClicked,
+                                linksClicked: [],
+                                results: [],
+                                skipped: [],
                             }
                         );
                     }, 250);
@@ -157,7 +160,7 @@ async function scrapeData(scrapeKwargs) {
     const table = tableContainer.shadowRoot.querySelector('table');
     const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
     log("searching " + tableRows.length + " rows for unclicked links")
-    for(let i=0; i< tableRows.length; i++) {
+    for(let i=0; i< tableRows.length && i < scrapeKwargs.maxAccounts; i++) {
         const tr = tableRows[i];
         const rowHeader = tr.querySelector(".data-table-for-accounts__row-header");
         const rowHeaderText = rowHeader.innerText
@@ -207,8 +210,27 @@ async function scrapeData(scrapeKwargs) {
     chrome.storage.local.set({running: false}, ()=> {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
+
+    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.skipped)
 }
 
+function getFileNameTimestamp() {
+    return (new Date()).toLocaleString().replace(/[\s\:\/\,]/g, "");
+}
+function downloadCSVOutput(rows, skipped) {
+    if(!rows.length) {
+        return;
+    }
+    const tempLink = document.createElement("a");
+    tempLink.download = `results-${ getFileNameTimestamp() }.csv`;
+    const csv = rows.map((v) => {return v.join(',')}).join('\n');
+    tempLink.href = encodeURI("data:text/csv," + csv);
+    tempLink.click();
+    alert(
+        "CSV Results are downloading to your downloads folder. Skipped:\n"
+        + skipped.join("\n")
+    );
+}
 
 async function scrapeTransactionData(scrapeKwargs) {
 
@@ -296,13 +318,24 @@ async function scrapeTransactionData(scrapeKwargs) {
         const amountText = row.querySelector("td.amount").innerText;
         const amountCents = Math.round(parseFloat(amountText.replace("$", "")) * 100);
 
-        processRow({
-            amountCents,
-            descriptionText,
-            lastName,
-            accountingId: scrapeKwargs.accountingId,
-            chaseId: scrapeKwargs.chaseId,
-        });
+        let csvRow;
+        try {
+            csvRow = processRow({
+                amountCents,
+                descriptionText,
+                lastName,
+                rowDateObj,
+                accountingId: scrapeKwargs.accountingId,
+                chaseId: scrapeKwargs.chaseId,
+            }, scrapeKwargs.rowFilters);
+        }
+        catch (err) {
+            scrapeKwargs.skipped.push(err.message);
+        }
+        if(csvRow) {
+            log("recording CSV row")
+            scrapeKwargs.results.push(csvRow);
+        }
     }
 
     delete scrapeKwargs.accountingId;
@@ -356,23 +389,69 @@ function parseISODateString(dateString) {
     return new Date(...dateString.split("-"))
 }
 
-function abbreviateDescription(descr) {
-    return descr;
+function abbreviateDescription(row) {
+    let memoParts = [];
+
+    // Last name
+    memoParts.push(row.lastName);
+
+    // Date
+    const dateStr = row.rowDateObj.toISOString().slice(0, 10);
+    memoParts.push(
+        `${dateStr.split("-")[1]}/${dateStr.split("-")[2]}`
+    );
+
+    if(/^check\#\d+$/.test(row.descriptionText.toLowerCase().replace(/\s/g, ''))) {
+        // Check number.
+        let checkNumPart = row.descriptionText.replace("#", "").replace(/\s/g, '');
+        memoParts.push(checkNumPart);
+    } else {
+        // Misc transaction description.
+        let cleanedDescr = (
+            row.descriptionText
+                .toLowerCase()
+                .split("")
+                .filter(c=>/[a-z0-9]/.test(c))
+                .join("")
+                .slice(0, 10)
+        );
+        memoParts.push(cleanedDescr);
+    }
+
+    return memoParts.join(" ");
 }
 
-function processRow(row) {
+function processRow(row, rowFilters) {
     console.log({processingRow: row});
 
     // check if we should skip
-    const desc = row.descriptionText.toLowerCase()
-    if(
-        desc.indexOf("online transfer") != -1
-        && (
-            desc.indexOf("8759") != -1
-            || desc.indexOf("9031") != -1
-        )
-    ) {
-        log("skipping transfer row " + desc);
-        return;
+    const cleanedDesc = row.descriptionText.toLowerCase().replace(/\s/g, "");
+    let skip = false;
+    for(let i=0; i<rowFilters.length; i++) {
+        const filt = rowFilters[i];
+        skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length == filt.AND.length;
+        if(!skip) {
+            continue;
+        }
+        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0;
+        if(skip) {
+            log("skipping transfer row " + row.descriptionText);
+            throw new Error("row filter: " + row.descriptionText);
+        }
     }
+
+    /*
+        accountId,
+        memo,
+        debitAmount,
+        creditAbout,
+    */
+    const dr = row.amountCents > 0 ? (row.amountCents / 100).toFixed(2) : 0;
+    const cr = row.amountCents < 0 ? (row.amountCents / -100).toFixed(2) : 0;
+    return [
+        row.accountingId,
+        abbreviateDescription(row),
+        dr,
+        cr,
+    ];
 }
