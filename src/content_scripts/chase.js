@@ -516,10 +516,11 @@ function processRow(row, rowFilters) {
         if(!skip) {
             continue;
         }
-        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0;
+        // All AND clauses are true, check OR clauses.
+        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
         if(skip) {
-            log("skipping transfer row " + row.descriptionText);
-            throw new Error("row filter: " + row.descriptionText);
+            log("skipping row " + row.descriptionText);
+            throw new Error("row filter: SKIPPING " + row.descriptionText);
         }
     }
 
