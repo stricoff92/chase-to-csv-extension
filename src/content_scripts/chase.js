@@ -585,8 +585,11 @@ async function _runHealthCheck(offset) {
                 }
                 inner(0);
             });
+            log("found table")
             continue;
         }
+
+        log("running test index " + i);
 
         let result;
         let passed;
@@ -608,6 +611,8 @@ async function _runHealthCheck(offset) {
             log(`PASS: ${TESTS[i].name}`)
         }
     }
+
+    log("tests complete");
     if(anyFailed) {
         alertOut.unshift("❌ FAIL * * * * *");
     } else {
