@@ -80,6 +80,16 @@ function main () {
                     }, 250);
                 });
             }
+        } else if (request.event === "healthCheckStarted") {
+            console.log("received event to start health check");
+            console.log(request);
+            if(onPage) {
+                const isRunning = await getRunning();
+                if(isRunning) {
+                    return;
+                }
+                chrome.storage.local.set({running: true}, runHealthCheck);
+            }
         }
         // // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
         return true;
@@ -454,4 +464,171 @@ function processRow(row, rowFilters) {
         dr,
         cr,
     ];
+}
+
+/*
+ *
+ *
+ * HEALTH
+ * CHECK
+ *
+ *
+ */
+const WAIT_FOR_TABLE_TOKEN = "WAIT_FOR_TABLE_TOKEN";
+function selectTable() {
+    const tableContainer = document.querySelector("#accountsTableAG1Table0");
+    const table = tableContainer.shadowRoot.querySelector('table');
+    if (!table) {
+        throw new Error("Could not find table");
+    }
+    return table;
+}
+function clickAccountsButton() {
+    document.querySelector("#requestAccounts").click();
+}
+const TESTS = [
+    {
+        name:"Account table is findable and has findable rows",
+        cb: async function() {
+            const tableContainer = document.querySelector("#accountsTableAG1Table0");
+            if(!tableContainer) {
+                return "could not find container accountsTableAG1Table0"
+            }
+            const table = tableContainer.shadowRoot.querySelector('table');
+            if(!table) {
+                return "could not find nested table"
+            }
+            const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
+            if (tableRows.length < 5) {
+                return"accounts table as too few rows"
+            }
+        }
+    },
+    {
+        name:"Account table column has findable link to transaction table",
+        cb: async function() {
+            const table = selectTable();
+            const tableRows = table.querySelectorAll("tr");
+            const row = tableRows[4];
+            const headerCol = row.querySelector(".data-table-for-accounts__row-header");
+            if(!headerCol) {
+                return "could not find row heading";
+            }
+            const anchor = headerCol.querySelector("a")
+            if(!anchor) {
+                return "could not find clickable link"
+            }
+        }
+    },
+    {
+        name:"Can click on row header link and navigate back to account table",
+        cb: async function() {
+            const tableHash = location.hash;
+            const table = selectTable();
+            const tableRows = table.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            return new Promise((resolve) => {
+                setTimeout(()=>{
+                    const detailsHash = location.hash;
+                    if(tableHash == detailsHash) {
+                        clickAccountsButton();
+                        resolve("URL did not update after clicking link")
+                    } else {
+                        clickAccountsButton();
+                        resolve();
+                    }
+                }, 25);
+            })
+        }
+    },
+    WAIT_FOR_TABLE_TOKEN,
+    {
+        name:"Account table is findable and has findable rows",
+        cb: async function() {
+            const tableContainer = document.querySelector("#accountsTableAG1Table0");
+            if(!tableContainer) {
+                return "could not find container accountsTableAG1Table0"
+            }
+            const table = tableContainer.shadowRoot.querySelector('table');
+            if(!table) {
+                return "could not find nested table"
+            }
+            const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
+            if (tableRows.length < 5) {
+                return"accounts table as too few rows"
+            }
+        }
+    },
+]
+async function _runHealthCheck(offset) {
+    const _offset = offset || 0;
+    const alertOut = [];
+    let anyFailed = false;
+    for(let i in TESTS) {
+        const isRunning = await getRunning();
+        if (!isRunning) {
+            return;
+        }
+
+        if(TESTS[i] === WAIT_FOR_TABLE_TOKEN) {
+            await new Promise((resolve, reject) => {
+                const inner = (attempts) => {
+                    if(attempts > 1000) {
+                        return reject();
+                    }
+                    let table;
+                    try {
+                        table = selectTable();
+                        resolve();
+                    } catch (err) {
+                        setTimeout(()=>{
+                            inner(attempts + 1);
+                        }, 25);
+                    }
+                }
+                inner(0);
+            });
+            continue;
+        }
+
+        let result;
+        let passed;
+        try {
+            result = await TESTS[i].cb();
+            passed = !result
+        } catch(err) {
+            alertOut.push(`ERROR: ${TESTS[i].name}`);
+            log(`ERROR: ${TESTS[i].name}`)
+            anyFailed = true;
+        }
+        if(result) {
+            alertOut.push(`FAIL: ${TESTS[i].name}`);
+            alertOut.push(`  ${result}`);
+            log(`FAIL: ${TESTS[i].name}`)
+            anyFailed = true;
+        } else if (passed) {
+            alertOut.push(`PASS: ${TESTS[i].name}`);
+            log(`PASS: ${TESTS[i].name}`)
+        }
+    }
+    if(anyFailed) {
+        alertOut.push("* * * * * FAIL * * * * *");
+    } else {
+        alertOut.push("All pass");
+    }
+    alert(alertOut.join("\n"));
+}
+
+async function runHealthCheck() {
+    try {
+        await _runHealthCheck();
+    }
+    catch(err) {
+        throw err
+    } finally {
+        chrome.storage.local.set({running: false}, ()=> {
+            chrome.runtime.sendMessage({event: "healthCheckStopped"})
+        });
+    }
 }

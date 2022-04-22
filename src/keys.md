@@ -17,6 +17,8 @@
  - `scrapeStopped`  event that indicates `running` local storage value just flipped to false
  - `progressBar`    event that indicates the progress bar should get set to a value/max
  - `debugMessage`   event that indicates a new debug message as be created
+ - `healthCheckStarted`
+ - `healthCheckStopped`
 
 
 ### Row Filters:

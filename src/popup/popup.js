@@ -58,18 +58,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse)=> {
         if(request.event === "onPage") {
-            setPopupOnPage()
+            setPopupOnPage();
         } else if (request.event === "offPage") {
             setPopupOffPage();
         } else if (request.event === "scrapeStarted") {
             setPopupRunning();
         } else if (request.event === "scrapeStopped") {
             setPopupOnPage();
-        }
-        else if (request.event === "progressBar") {
+        } else if (request.event == "healthCheckStopped") {
+            setPopupOnPage();
+        } else if (request.event === "progressBar") {
             updateProgress(request.data.value, request.data.max);
-        }
-        else if (request.event === "debugMessage") {
+        } else if (request.event === "debugMessage") {
             updateDebugMessage(request.data);
         }
 
@@ -91,6 +91,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    document.getElementById("start-health-check-btn").addEventListener("click", () => {
+        const tabQueryParams = {
+            active: true,
+            currentWindow: true,
+            url: [
+                "https://*.chase.com/*",
+            ],
+        };
+        chrome.tabs.query(tabQueryParams, (tabs) => {
+            if(tabs.length == 0) {
+                return;
+            }
+            chrome.tabs.sendMessage(
+                tabs[0].id,
+                {event: "healthCheckStarted"},
+                ()=>{
+                    setPopupRunning();
+                },
+            )
+        });
+    });
     document.getElementById("start-scrape-btn").addEventListener("click", () => {
         const errorArea = document.getElementById("start-scrape-error-area");
         errorArea.classList.add("hidden")

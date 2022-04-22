@@ -60,6 +60,21 @@
                 background-color:#b3a9ff;
                 color:#0a0054;
             }
+            #start-health-check-btn {
+                margin-top: 0.6rem;
+                font-weight: bold;
+                font-size: 150%;
+                background-color:#d1cbff;
+                color:#0a0054;
+                border-radius: 10px;
+                padding:12px;
+                cursor: pointer;
+            }
+            #start-health-check-btn:hover {
+                cursor: pointer;
+                background-color:#b3a9ff;
+                color:#0a0054;
+            }
         </style>
         <script src="popup.js">
         </script>
@@ -78,6 +93,13 @@
             <h3>Not on Account Page</h3>
         </div>
         <div id="page-found-container" class="popup-container hidden">
+            <div style="display:flex; justify-content:space-between">
+                <p style="font-weight:bold; font-size:0.9rem;">Run Health Check</p>
+                <button id="start-health-check-btn">
+                    Start
+                </button>
+            </div>
+            <hr>
             <h3>Start Bank Data Extraction</h3>
             <div id="start-scrape-error-area" class="form-row hidden">
 
