@@ -544,20 +544,8 @@ const TESTS = [
     },
     WAIT_FOR_TABLE_TOKEN,
     {
-        name:"Account table is findable and has findable rows",
+        name:"",
         cb: async function() {
-            const tableContainer = document.querySelector("#accountsTableAG1Table0");
-            if(!tableContainer) {
-                return "could not find container accountsTableAG1Table0"
-            }
-            const table = tableContainer.shadowRoot.querySelector('table');
-            if(!table) {
-                return "could not find nested table"
-            }
-            const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
-            if (tableRows.length < 5) {
-                return"accounts table as too few rows"
-            }
         }
     },
 ]
@@ -616,14 +604,14 @@ async function _runHealthCheck(offset) {
             log(`FAIL: ${TESTS[i].name}`)
             anyFailed = true;
         } else if (passed) {
-            alertOut.push(`PASS: ${TESTS[i].name}`);
+            alertOut.push(`OK: ${TESTS[i].name}`);
             log(`PASS: ${TESTS[i].name}`)
         }
     }
     if(anyFailed) {
-        alertOut.unshift("* * * * * FAIL * * * * *");
+        alertOut.unshift("❌ FAIL * * * * *");
     } else {
-        alertOut.unshift("All tests pass");
+        alertOut.unshift("✅ OK - all tests pass");
     }
     setTimeout(() => {
         alert(alertOut.join("\n"));
