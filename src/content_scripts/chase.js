@@ -565,8 +565,7 @@ const TESTS = [
     },
     WAIT_FOR_TABLE_TOKEN,
 ]
-async function _runHealthCheck(offset) {
-    const _offset = offset || 0;
+async function _runHealthCheck() {
     const alertOut = [];
     let anyFailed = false;
     for(let i in TESTS) {
