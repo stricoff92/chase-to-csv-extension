@@ -401,7 +401,7 @@ function abbreviateDescription(row) {
         `${dateStr.split("-")[1]}/${dateStr.split("-")[2]}`
     );
 
-    if(/^CHECK\#\d+$/.test(row.descriptionText.toLowerCase().replace(/\s/g, ''))) {
+    if(/^check\#\d+$/.test(row.descriptionText.toLowerCase().replace(/\s/g, ''))) {
         // Check number.
         let checkNumPart = row.descriptionText.replace("#", "").replace(/\s/g, '');
         memoParts.push(checkNumPart);
