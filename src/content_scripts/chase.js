@@ -121,7 +121,7 @@ function main () {
                                 lookup,
                                 linksClicked: [],
                                 results: [],
-                                skipped: [],
+                                notices: [],
                             }
                         );
                     }, 250);
@@ -270,24 +270,31 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.skipped)
+    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices)
 }
 
 function getFileNameTimestamp() {
     return (new Date()).toLocaleString().replace(/[\s\:\/\,]/g, "");
 }
-function downloadCSVOutput(rows, skipped) {
+function downloadCSVOutput(rows, notices) {
     if(!rows.length) {
         return;
     }
-    const tempLink = document.createElement("a");
-    tempLink.download = `results-${ getFileNameTimestamp() }.csv`;
+    const ts = getFileNameTimestamp()
+    const csvLink = document.createElement("a");
+    csvLink.download = `results-${ ts }.csv`;
     const csv = rows.map((v) => {return v.join(',')}).join('\n');
-    tempLink.href = encodeURI("data:text/csv," + csv);
-    tempLink.click();
+    csvLink.href = encodeURI("data:text/csv," + csv);
+    csvLink.click();
+
+    const logLink = document.createElement("a");
+    logLink.download = `results-${ ts }.txt`;
+    const logLines = notices.join('\n');
+    logLink.href = encodeURI("data:text/plain," + logLines);
+    logLink.click();
+
     alert(
-        "CSV Results are downloading to your downloads folder. Skipped:\n"
-        + skipped.join("\n")
+        "CSV Results are downloading to your downloads folder"
     );
 }
 
@@ -401,7 +408,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             }, scrapeKwargs.rowFilters);
         }
         catch (err) {
-            scrapeKwargs.skipped.push(err.message);
+            scrapeKwargs.notices.push(err.message);
         }
         if(csvRow) {
             log("recording CSV row")
