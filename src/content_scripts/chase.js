@@ -25,6 +25,53 @@ async function getLookupTable() {
     });
 }
 
+const elementSelectors = new Map([
+    [
+        'tableContainer',
+        '#accountsTableAG1Table0',
+    ], [
+        'viewMoreAccountsLinkContainer',
+        '#seeAllAccountsAG1Table',
+    ], [
+        'viewAllAccountsLink',
+        '#requestAccounts',
+    ], [
+        "accountsTableRow",
+        ".data-table-for-accounts__row",
+    ], [
+        "accountsTableRowHeader",
+        ".data-table-for-accounts__row-header",
+    ],[
+        "continueWithActivityBtn",
+        "#continueWithActivity",
+    ], [
+        "transactionTable",
+        "#activityTableslideInActivity",
+    ], [
+        "transactionTableLoader",
+        ".loader-section",
+    ], [
+        "seeMoreTransactions",
+        "#seeMore",
+    ],[
+        "transactionRowDate",
+        "td.date",
+    ], [
+        "transactionRowDescription",
+        "td.description",
+    ], [
+        "transactionRowAmount",
+        "td.amount",
+    ]
+])
+
+const getElementSelector = (name) => {
+    if (elementSelectors.has(name)) {
+        return elementSelectors.get(name);
+    }
+    throw new Error("Unknown element selector")
+}
+
 window.addEventListener("load", main, false);
 function main () {
     const checkTableTimer = setInterval(checkForTable, 300);
@@ -37,7 +84,7 @@ function main () {
     let onPage = false;
 
     function checkForTable () {
-        if (document.querySelector("#accountsTableAG1Table0")) {
+        if (document.querySelector(getElementSelector("tableContainer"))) {
             clearInterval(checkTableTimer);
             clearTimeout(timedOutCallbackTimer);
             processEventFoundTable();
@@ -117,7 +164,8 @@ function confirmIfFalsy(value, message) {
 }
 
 function clickSeeAllAccountsLinkIfItsThere() {
-    const element = document.querySelector("#seeAllAccountsAG1Table");
+    const element = document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
+);
     if(!element) {
         log("could not find link to view all accounts");
         return;
@@ -127,7 +175,8 @@ function clickSeeAllAccountsLinkIfItsThere() {
 }
 
 function canViewMoreAccounts() {
-    return !!document.querySelector("#seeAllAccountsAG1Table");
+    return !!document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
+);
 }
 
 function getChaseCurrentAccountNumber() {
@@ -147,7 +196,7 @@ async function scrapeData(scrapeKwargs) {
     }
 
     // Wait for table to load
-    const tableContainer = document.getElementById("accountsTableAG1Table0");
+    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
     if(!tableContainer) {
         log("could not find table container, waiting")
         setTimeout(()=>{
@@ -168,11 +217,11 @@ async function scrapeData(scrapeKwargs) {
 
     // Loop through account rows (behind shadow root)
     const table = tableContainer.shadowRoot.querySelector('table');
-    const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
+    const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
     log("searching " + tableRows.length + " rows for unclicked links")
     for(let i=0; i< tableRows.length && i < scrapeKwargs.maxAccounts; i++) {
         const tr = tableRows[i];
-        const rowHeader = tr.querySelector(".data-table-for-accounts__row-header");
+        const rowHeader = tr.querySelector(getElementSelector("accountsTableRowHeader"));
         const rowHeaderText = rowHeader.innerText
         if(scrapeKwargs.linksClicked.indexOf(rowHeaderText) != -1) {
             continue;
@@ -195,7 +244,7 @@ async function scrapeData(scrapeKwargs) {
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
                 log("Could not find bank account id in URL, skipping.")
-                document.querySelector("#requestAccounts").click();
+                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
                 });
@@ -203,7 +252,7 @@ async function scrapeData(scrapeKwargs) {
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
-                document.querySelector("#requestAccounts").click();
+                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
                 });
@@ -248,14 +297,16 @@ async function scrapeTransactionData(scrapeKwargs) {
     const lastName = accountLinkHeader.split(" ")[0];
 
     // Check for any takeovers
-    const continueWithActivity = document.getElementById("continueWithActivity");
+    const continueWithActivity = document.querySelector(
+        getElementSelector("continueWithActivityBtn")
+    );
     if(continueWithActivity) {
         log("clicking continue with activity button")
         continueWithActivity.click();
     }
 
-    // Wait for table to load, or timeout.
-    const table = document.getElementById('activityTableslideInActivity');
+    // Wait for table to load
+    const table = document.querySelector(getElementSelector("transactionTable"));
     if (!table) {
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs)
@@ -264,7 +315,9 @@ async function scrapeTransactionData(scrapeKwargs) {
     }
 
     // Waiting for "see all activity" rows to load
-    const loaderElem = document.querySelector(".loader-section");
+    const loaderElem = document.querySelector(
+        getElementSelector("transactionTableLoader")
+    );
     if(loaderElem) {
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs);
@@ -284,13 +337,17 @@ async function scrapeTransactionData(scrapeKwargs) {
     }
     let oldestDate;
     for(let i=1; i<rows.length; i++) {
-        let rowDateStr = rows[i].querySelector("td.date").innerText;
+        let rowDateStr = rows[i].querySelector(
+            getElementSelector("transactionRowDate")
+        ).innerText;
         if(rowDateStr && isChaseDateString(rowDateStr)) {
             oldestDate = parseChaseDateString(rowDateStr);
         }
     }
     if(oldestDate >= startDateObj) {
-        const seeMoreBtn = document.getElementById("seeMore");
+        const seeMoreBtn = document.querySelector(
+            getElementSelector("seeMoreTransactions")
+        );
         if (seeMoreBtn) {
             seeMoreBtn.click();
             setTimeout(()=>{
@@ -304,7 +361,7 @@ async function scrapeTransactionData(scrapeKwargs) {
     let prevDateStr;
     for(let i=1; i<rows.length; i++) {
         const row = rows[i];
-        const dateTd = row.querySelector("td.date");
+        const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
         let dateStr = dateTd.innerText;
         log("found date string " + dateStr)
         if(dateStr && isChaseDateString(dateStr)) {
@@ -324,8 +381,12 @@ async function scrapeTransactionData(scrapeKwargs) {
             break;
         }
 
-        const descriptionText = row.querySelector("td.description").innerText;
-        const amountText = row.querySelector("td.amount").innerText;
+        const descriptionText = row.querySelector(
+            getElementSelector("transactionRowDescription")
+        ).innerText;
+        const amountText = row.querySelector(
+            getElementSelector("transactionRowAmount")
+        ).innerText;
         const amountCents = Math.round(parseFloat(amountText.replace("$", "")) * 100);
 
         let csvRow;
@@ -352,7 +413,7 @@ async function scrapeTransactionData(scrapeKwargs) {
     delete scrapeKwargs.chaseId;
 
     // Go back to accounts list
-    document.querySelector("#requestAccounts").click();
+    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
     setTimeout(()=>{
         scrapeData(scrapeKwargs);
     });
@@ -476,7 +537,7 @@ function processRow(row, rowFilters) {
  */
 const WAIT_FOR_TABLE_TOKEN = "WAIT_FOR_TABLE_TOKEN";
 function selectTable() {
-    const tableContainer = document.querySelector("#accountsTableAG1Table0");
+    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
     const table = tableContainer.shadowRoot.querySelector('table');
     if (!table) {
         throw new Error("Could not find table");
@@ -484,13 +545,13 @@ function selectTable() {
     return table;
 }
 function clickAccountsButton() {
-    document.querySelector("#requestAccounts").click();
+    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
 }
 const TESTS = [
     {
         name:"Account table is findable and has findable rows",
         cb: async function() {
-            const tableContainer = document.querySelector("#accountsTableAG1Table0");
+            const tableContainer = document.querySelector(getElementSelector("tableContainer"));
             if(!tableContainer) {
                 return "could not find container accountsTableAG1Table0"
             }
@@ -498,7 +559,7 @@ const TESTS = [
             if(!table) {
                 return "could not find nested table"
             }
-            const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
+            const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
             if (tableRows.length < 5) {
                 return"accounts table as too few rows"
             }
@@ -510,7 +571,7 @@ const TESTS = [
             const table = selectTable();
             const tableRows = table.querySelectorAll("tr");
             const row = tableRows[4];
-            const headerCol = row.querySelector(".data-table-for-accounts__row-header");
+            const headerCol = row.querySelector(getElementSelector("accountsTableRowHeader"));
             if(!headerCol) {
                 return "could not find row heading";
             }
@@ -612,7 +673,7 @@ async function _runHealthCheck() {
             result = await TESTS[i].cb();
             passed = !result
         } catch(err) {
-            alertOut.push(`ERROR: ${TESTS[i].name}`);
+            alertOut.push(`ERROR: ${TESTS[i].name}\n${err.message}`);
             log(`ERROR: ${TESTS[i].name}`)
             anyFailed = true;
         }
@@ -643,6 +704,7 @@ async function runHealthCheck() {
         await _runHealthCheck();
     }
     catch(err) {
+        alert("Error:\n" + err.message)
         throw err
     } finally {
         chrome.storage.local.set({running: false}, ()=> {
