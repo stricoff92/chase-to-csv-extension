@@ -244,6 +244,9 @@ async function scrapeData(scrapeKwargs) {
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
                 log("Could not find bank account id in URL, skipping.")
+                scrapeKwargs.notices.push(
+                    "WARNING: could not get chase account ID from URL for link: " + rowHeaderText
+                );
                 document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
@@ -252,6 +255,7 @@ async function scrapeData(scrapeKwargs) {
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
+                scrapeKwargs.notices.push("Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
                 document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
@@ -260,6 +264,7 @@ async function scrapeData(scrapeKwargs) {
             }
             const accountingId = scrapeKwargs.lookup.get(chaseId);
             log("row has associated ACC account " + accountingId);
+            scrapeKwargs.notices.push("Scraping CHASE account " + chaseId + " matching id: " + accountingId);
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
             });
@@ -308,7 +313,8 @@ async function scrapeTransactionData(scrapeKwargs) {
         getElementSelector("continueWithActivityBtn")
     );
     if(continueWithActivity) {
-        log("clicking continue with activity button")
+        log("clicking continue with activity button");
+        scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
         continueWithActivity.click();
     }
 
@@ -326,6 +332,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         getElementSelector("transactionTableLoader")
     );
     if(loaderElem) {
+        scrapeKwargs.notices.push("DEBUG: found loader element, waiting..");
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs);
         }, 120);
@@ -377,6 +384,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
+            scrapeKwargs.notices.push("INFO: skipping row due to bad date, on page " + accountLinkHeader);
             continue;
         }
         log("parsing string " + dateStr)
