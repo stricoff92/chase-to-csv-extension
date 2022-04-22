@@ -571,7 +571,14 @@ async function _runHealthCheck(offset) {
             return;
         }
 
+        chrome.runtime.sendMessage({ event: "progressBar", data: {
+            value: i,
+            max: TESTS.length,
+        }});
+
+
         if(TESTS[i] === WAIT_FOR_TABLE_TOKEN) {
+            log("waiting for table")
             await new Promise((resolve, reject) => {
                 const inner = (attempts) => {
                     if(attempts > 1000) {
@@ -582,6 +589,7 @@ async function _runHealthCheck(offset) {
                         table = selectTable();
                         resolve();
                     } catch (err) {
+                        log("waiting for table...")
                         setTimeout(()=>{
                             inner(attempts + 1);
                         }, 25);
@@ -613,11 +621,13 @@ async function _runHealthCheck(offset) {
         }
     }
     if(anyFailed) {
-        alertOut.push("* * * * * FAIL * * * * *");
+        alertOut.unshift("* * * * * FAIL * * * * *");
     } else {
-        alertOut.push("All pass");
+        alertOut.unshift("All tests pass");
     }
-    alert(alertOut.join("\n"));
+    setTimeout(() => {
+        alert(alertOut.join("\n"));
+    }, 500);
 }
 
 async function runHealthCheck() {
