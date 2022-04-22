@@ -464,6 +464,9 @@ function parseChaseDateString(dateString) {
 }
 
 function parseISODateString(dateString) {
+    if(!/^\d{4}\-[0-1][0-9]\-[0-3][0-9]$/.test(dateString)) {
+        throw new Error("Could not parse ISO date string: " + dateString);
+    }
     const parts = dateString.split("-");
     parts[1] = parseInt(parts[1]) - 1;
     return new Date(...parts);
