@@ -62,7 +62,7 @@ const elementSelectors = new Map([
     ], [
         "transactionRowAmount",
         "td.amount",
-    ]
+    ],
 ])
 
 const getElementSelector = (name) => {
