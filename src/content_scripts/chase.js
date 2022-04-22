@@ -460,11 +460,13 @@ function parseChaseDateString(dateString) {
     if(!year) {
         throw new Error("could not parse, unknown year, " + dateString);
     }
-    return new Date(year, monthInt, date);
+    return new Date(year, monthInt - 1, date);
 }
 
 function parseISODateString(dateString) {
-    return new Date(...dateString.split("-"))
+    const parts = dateString.split("-");
+    parts[1] = parseInt(parts[1]) - 1;
+    return new Date(...parts);
 }
 
 function abbreviateDescription(row) {
