@@ -521,7 +521,7 @@ const TESTS = [
         }
     },
     {
-        name:"Can click on row header link and navigate back to account table",
+        name:"Can click on row header link and navigate account details",
         cb: async function() {
             const tableHash = location.hash;
             const table = selectTable();
@@ -531,11 +531,10 @@ const TESTS = [
             return new Promise((resolve) => {
                 setTimeout(()=>{
                     const detailsHash = location.hash;
+                    clickAccountsButton();
                     if(tableHash == detailsHash) {
-                        clickAccountsButton();
                         resolve("URL did not update after clicking link")
                     } else {
-                        clickAccountsButton();
                         resolve();
                     }
                 }, 25);
@@ -544,10 +543,27 @@ const TESTS = [
     },
     WAIT_FOR_TABLE_TOKEN,
     {
-        name:"",
+        name:"Can get account ID from URL",
         cb: async function() {
+            const table = selectTable();
+            const tableRows = table.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            return new Promise((resolve) => {
+                setTimeout(()=>{
+                    const accountId = getChaseCurrentAccountNumber();
+                    clickAccountsButton();
+                    if(accountId && /^\d{6,}$/.test(accountId)) {
+                        log("found account id " + accountId);
+                        resolve();
+                    } else {
+                        resolve("could not get account id from URL");
+                    }
+                });
+            })
         }
     },
+    WAIT_FOR_TABLE_TOKEN,
 ]
 async function _runHealthCheck(offset) {
     const _offset = offset || 0;
