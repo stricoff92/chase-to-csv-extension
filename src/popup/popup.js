@@ -121,10 +121,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const maxAccounts = parseInt(
             document.getElementById("start-scrape-max-rows-input").value
         );
-        const rowFilters = JSON.parse(
-            document.getElementById("new-scrape-row-desc-filter").value
-            || "[]"
-        );
+        let rowFilters;
+        try{
+            rowFilters = JSON.parse(
+                document.getElementById("new-scrape-row-desc-filter").value
+                || "[]"
+            )
+        } catch(err) {
+
+        }
         chrome.storage.local.set({
             previousFilter: JSON.stringify(rowFilters)
         });
@@ -138,6 +143,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if(!maxAccounts || maxAccounts < 1) {
             errors.push("Max accounts must be positive number.");
+        }
+        if(!rowFilters || !Array.isArray(rowFilters)) {
+            errors.push("invalid row filter format")
+        } else {
+            for(let i in rowFilters) {
+                if(typeof rowFilters[i].AND === "undefined" || typeof rowFilters[i].OR === "undefined") {
+                    errors.push(`Row filter index ${i} missing AND/OR data.`)
+                }
+                if(!Array.isArray(rowFilters[i].AND) || !Array.isArray(rowFilters[i].OR)) {
+                    errors.push(`Row filter index ${i} has invalid AND/OR data.`);
+                }
+            }
         }
 
         if (errors.length) {
