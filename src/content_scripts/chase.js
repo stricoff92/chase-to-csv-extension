@@ -186,6 +186,20 @@ function getChaseCurrentAccountNumber() {
     }
 }
 
+async function waitForElement(selector) {
+    return new Promise((resolve) => {
+        const inner = () => {
+            const elem = document.querySelector(selector);
+            if (elem) {
+                resolve();
+            } else {
+                setTimeout(inner, 100);
+            }
+        }
+        inner();
+    })
+}
+
 async function scrapeData(scrapeKwargs) {
     log("scrapeData running, checking storage for running flag")
     const running = await getRunning();
@@ -196,14 +210,7 @@ async function scrapeData(scrapeKwargs) {
     }
 
     // Wait for table to load
-    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
-    if(!tableContainer) {
-        log("could not find table container, waiting")
-        setTimeout(()=>{
-            scrapeData(scrapeKwargs)
-        }, 200);
-        return
-    }
+    await waitForElement(getElementSelector("tableContainer"))
 
     // Wait until table is fully expanded.
     clickSeeAllAccountsLinkIfItsThere();
@@ -316,16 +323,14 @@ async function scrapeTransactionData(scrapeKwargs) {
         log("clicking continue with activity button");
         scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
         continueWithActivity.click();
+        setTimeout(()=>{
+            scrapeTransactionData(scrapeKwargs)
+        })
+        return
     }
 
     // Wait for table to load
-    const table = document.querySelector(getElementSelector("transactionTable"));
-    if (!table) {
-        setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs)
-        }, 120);
-        return;
-    }
+    await waitForElement(getElementSelector("transactionTable"));
 
     // Waiting for "see all activity" rows to load
     const loaderElem = document.querySelector(
