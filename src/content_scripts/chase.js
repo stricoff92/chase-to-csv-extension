@@ -191,7 +191,7 @@ async function waitForElement(selector) {
         const inner = () => {
             const elem = document.querySelector(selector);
             if (elem) {
-                resolve();
+                resolve(elem);
             } else {
                 setTimeout(inner, 100);
             }
@@ -210,7 +210,7 @@ async function scrapeData(scrapeKwargs) {
     }
 
     // Wait for table to load
-    await waitForElement(getElementSelector("tableContainer"))
+    const tableContainer = await waitForElement(getElementSelector("tableContainer"))
 
     // Wait until table is fully expanded.
     clickSeeAllAccountsLinkIfItsThere();
@@ -237,7 +237,7 @@ async function scrapeData(scrapeKwargs) {
         // update progress bar
         chrome.runtime.sendMessage({ event: "progressBar", data: {
             value: i + 1,
-            max: tableRows.length,
+            max: Math.min(tableRows.length, scrapeKwargs.maxAccounts),
         }});
 
         // Navigate to the account page
@@ -263,6 +263,7 @@ async function scrapeData(scrapeKwargs) {
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
                 scrapeKwargs.notices.push("Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
+                console.log({notices: scrapeKwargs.notices});
                 document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
@@ -282,7 +283,8 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices)
+    console.log({finalNotices: scrapeKwargs.notices});
+    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices);
 }
 
 function getFileNameTimestamp() {
@@ -301,8 +303,10 @@ function downloadCSVOutput(rows, notices) {
 
     const logLink = document.createElement("a");
     logLink.download = `results-${ ts }.txt`;
+    console.log({notices})
     const logLines = notices.join('\n');
-    logLink.href = encodeURI("data:text/plain," + logLines);
+    console.log({logLines})
+    logLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(logLines);
     logLink.click();
 
     alert(
@@ -324,20 +328,21 @@ async function scrapeTransactionData(scrapeKwargs) {
         scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
         continueWithActivity.click();
         setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs)
-        })
-        return
+            scrapeTransactionData(scrapeKwargs);
+        });
+        return;
     }
 
     // Wait for table to load
-    await waitForElement(getElementSelector("transactionTable"));
+    log("waiting for transaction table to load");
+    const table = await waitForElement(getElementSelector("transactionTable"));
 
     // Waiting for "see all activity" rows to load
     const loaderElem = document.querySelector(
         getElementSelector("transactionTableLoader")
     );
     if(loaderElem) {
-        scrapeKwargs.notices.push("DEBUG: found loader element, waiting..");
+        log("DEBUG: found loader element, waiting..");
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs);
         }, 120);
