@@ -25,6 +25,53 @@ async function getLookupTable() {
     });
 }
 
+const elementSelectors = new Map([
+    [
+        'tableContainer',
+        '#accountsTableAG1Table0',
+    ], [
+        'viewMoreAccountsLinkContainer',
+        '#seeAllAccountsAG1Table',
+    ], [
+        'viewAllAccountsLink',
+        '#requestAccounts',
+    ], [
+        "accountsTableRow",
+        ".data-table-for-accounts__row",
+    ], [
+        "accountsTableRowHeader",
+        ".data-table-for-accounts__row-header",
+    ],[
+        "continueWithActivityBtn",
+        "#continueWithActivity",
+    ], [
+        "transactionTable",
+        "#activityTableslideInActivity",
+    ], [
+        "transactionTableLoader",
+        ".loader-section",
+    ], [
+        "seeMoreTransactions",
+        "#seeMore",
+    ],[
+        "transactionRowDate",
+        "td.date",
+    ], [
+        "transactionRowDescription",
+        "td.description",
+    ], [
+        "transactionRowAmount",
+        "td.amount",
+    ],
+])
+
+const getElementSelector = (name) => {
+    if (elementSelectors.has(name)) {
+        return elementSelectors.get(name);
+    }
+    throw new Error("Unknown element selector")
+}
+
 window.addEventListener("load", main, false);
 function main () {
     const checkTableTimer = setInterval(checkForTable, 300);
@@ -37,7 +84,7 @@ function main () {
     let onPage = false;
 
     function checkForTable () {
-        if (document.querySelector("#accountsTableAG1Table0")) {
+        if (document.querySelector(getElementSelector("tableContainer"))) {
             clearInterval(checkTableTimer);
             clearTimeout(timedOutCallbackTimer);
             processEventFoundTable();
@@ -74,11 +121,21 @@ function main () {
                                 lookup,
                                 linksClicked: [],
                                 results: [],
-                                skipped: [],
+                                notices: [],
                             }
                         );
                     }, 250);
                 });
+            }
+        } else if (request.event === "healthCheckStarted") {
+            console.log("received event to start health check");
+            console.log(request);
+            if(onPage) {
+                const isRunning = await getRunning();
+                if(isRunning) {
+                    return;
+                }
+                chrome.storage.local.set({running: true}, runHealthCheck);
             }
         }
         // // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
@@ -107,7 +164,8 @@ function confirmIfFalsy(value, message) {
 }
 
 function clickSeeAllAccountsLinkIfItsThere() {
-    const element = document.querySelector("#seeAllAccountsAG1Table");
+    const element = document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
+);
     if(!element) {
         log("could not find link to view all accounts");
         return;
@@ -117,7 +175,8 @@ function clickSeeAllAccountsLinkIfItsThere() {
 }
 
 function canViewMoreAccounts() {
-    return !!document.querySelector("#seeAllAccountsAG1Table");
+    return !!document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
+);
 }
 
 function getChaseCurrentAccountNumber() {
@@ -137,7 +196,7 @@ async function scrapeData(scrapeKwargs) {
     }
 
     // Wait for table to load
-    const tableContainer = document.getElementById("accountsTableAG1Table0");
+    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
     if(!tableContainer) {
         log("could not find table container, waiting")
         setTimeout(()=>{
@@ -158,11 +217,11 @@ async function scrapeData(scrapeKwargs) {
 
     // Loop through account rows (behind shadow root)
     const table = tableContainer.shadowRoot.querySelector('table');
-    const tableRows = table.querySelectorAll(".data-table-for-accounts__row");
+    const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
     log("searching " + tableRows.length + " rows for unclicked links")
     for(let i=0; i< tableRows.length && i < scrapeKwargs.maxAccounts; i++) {
         const tr = tableRows[i];
-        const rowHeader = tr.querySelector(".data-table-for-accounts__row-header");
+        const rowHeader = tr.querySelector(getElementSelector("accountsTableRowHeader"));
         const rowHeaderText = rowHeader.innerText
         if(scrapeKwargs.linksClicked.indexOf(rowHeaderText) != -1) {
             continue;
@@ -185,7 +244,10 @@ async function scrapeData(scrapeKwargs) {
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
                 log("Could not find bank account id in URL, skipping.")
-                document.querySelector("#requestAccounts").click();
+                scrapeKwargs.notices.push(
+                    "WARNING: could not get chase account ID from URL for link: " + rowHeaderText
+                );
+                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
                 });
@@ -193,7 +255,8 @@ async function scrapeData(scrapeKwargs) {
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
-                document.querySelector("#requestAccounts").click();
+                scrapeKwargs.notices.push("Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
+                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
                 });
@@ -201,6 +264,7 @@ async function scrapeData(scrapeKwargs) {
             }
             const accountingId = scrapeKwargs.lookup.get(chaseId);
             log("row has associated ACC account " + accountingId);
+            scrapeKwargs.notices.push("Scraping CHASE account " + chaseId + " matching id: " + accountingId);
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
             });
@@ -211,24 +275,31 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.skipped)
+    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices)
 }
 
 function getFileNameTimestamp() {
     return (new Date()).toLocaleString().replace(/[\s\:\/\,]/g, "");
 }
-function downloadCSVOutput(rows, skipped) {
+function downloadCSVOutput(rows, notices) {
     if(!rows.length) {
         return;
     }
-    const tempLink = document.createElement("a");
-    tempLink.download = `results-${ getFileNameTimestamp() }.csv`;
+    const ts = getFileNameTimestamp()
+    const csvLink = document.createElement("a");
+    csvLink.download = `results-${ ts }.csv`;
     const csv = rows.map((v) => {return v.join(',')}).join('\n');
-    tempLink.href = encodeURI("data:text/csv," + csv);
-    tempLink.click();
+    csvLink.href = encodeURI("data:text/csv," + csv);
+    csvLink.click();
+
+    const logLink = document.createElement("a");
+    logLink.download = `results-${ ts }.txt`;
+    const logLines = notices.join('\n');
+    logLink.href = encodeURI("data:text/plain," + logLines);
+    logLink.click();
+
     alert(
-        "CSV Results are downloading to your downloads folder. Skipped:\n"
-        + skipped.join("\n")
+        "CSV Results are downloading to your downloads folder"
     );
 }
 
@@ -238,14 +309,17 @@ async function scrapeTransactionData(scrapeKwargs) {
     const lastName = accountLinkHeader.split(" ")[0];
 
     // Check for any takeovers
-    const continueWithActivity = document.getElementById("continueWithActivity");
+    const continueWithActivity = document.querySelector(
+        getElementSelector("continueWithActivityBtn")
+    );
     if(continueWithActivity) {
-        log("clicking continue with activity button")
+        log("clicking continue with activity button");
+        scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
         continueWithActivity.click();
     }
 
-    // Wait for table to load, or timeout.
-    const table = document.getElementById('activityTableslideInActivity');
+    // Wait for table to load
+    const table = document.querySelector(getElementSelector("transactionTable"));
     if (!table) {
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs)
@@ -254,8 +328,11 @@ async function scrapeTransactionData(scrapeKwargs) {
     }
 
     // Waiting for "see all activity" rows to load
-    const loaderElem = document.querySelector(".loader-section");
+    const loaderElem = document.querySelector(
+        getElementSelector("transactionTableLoader")
+    );
     if(loaderElem) {
+        scrapeKwargs.notices.push("DEBUG: found loader element, waiting..");
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs);
         }, 120);
@@ -274,13 +351,17 @@ async function scrapeTransactionData(scrapeKwargs) {
     }
     let oldestDate;
     for(let i=1; i<rows.length; i++) {
-        let rowDateStr = rows[i].querySelector("td.date").innerText;
+        let rowDateStr = rows[i].querySelector(
+            getElementSelector("transactionRowDate")
+        ).innerText;
         if(rowDateStr && isChaseDateString(rowDateStr)) {
             oldestDate = parseChaseDateString(rowDateStr);
         }
     }
     if(oldestDate >= startDateObj) {
-        const seeMoreBtn = document.getElementById("seeMore");
+        const seeMoreBtn = document.querySelector(
+            getElementSelector("seeMoreTransactions")
+        );
         if (seeMoreBtn) {
             seeMoreBtn.click();
             setTimeout(()=>{
@@ -294,7 +375,7 @@ async function scrapeTransactionData(scrapeKwargs) {
     let prevDateStr;
     for(let i=1; i<rows.length; i++) {
         const row = rows[i];
-        const dateTd = row.querySelector("td.date");
+        const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
         let dateStr = dateTd.innerText;
         log("found date string " + dateStr)
         if(dateStr && isChaseDateString(dateStr)) {
@@ -303,6 +384,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
+            scrapeKwargs.notices.push("INFO: skipping row due to bad date, on page " + accountLinkHeader);
             continue;
         }
         log("parsing string " + dateStr)
@@ -314,8 +396,12 @@ async function scrapeTransactionData(scrapeKwargs) {
             break;
         }
 
-        const descriptionText = row.querySelector("td.description").innerText;
-        const amountText = row.querySelector("td.amount").innerText;
+        const descriptionText = row.querySelector(
+            getElementSelector("transactionRowDescription")
+        ).innerText;
+        const amountText = row.querySelector(
+            getElementSelector("transactionRowAmount")
+        ).innerText;
         const amountCents = Math.round(parseFloat(amountText.replace("$", "")) * 100);
 
         let csvRow;
@@ -330,7 +416,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             }, scrapeKwargs.rowFilters);
         }
         catch (err) {
-            scrapeKwargs.skipped.push(err.message);
+            scrapeKwargs.notices.push(err.message);
         }
         if(csvRow) {
             log("recording CSV row")
@@ -342,7 +428,7 @@ async function scrapeTransactionData(scrapeKwargs) {
     delete scrapeKwargs.chaseId;
 
     // Go back to accounts list
-    document.querySelector("#requestAccounts").click();
+    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
     setTimeout(()=>{
         scrapeData(scrapeKwargs);
     });
@@ -382,11 +468,16 @@ function parseChaseDateString(dateString) {
     if(!year) {
         throw new Error("could not parse, unknown year, " + dateString);
     }
-    return new Date(year, monthInt, date);
+    return new Date(year, monthInt - 1, date);
 }
 
 function parseISODateString(dateString) {
-    return new Date(...dateString.split("-"))
+    if(!/^\d{4}\-[0-1][0-9]\-[0-3][0-9]$/.test(dateString)) {
+        throw new Error("Could not parse ISO date string: " + dateString);
+    }
+    const parts = dateString.split("-");
+    parts[1] = parseInt(parts[1]) - 1;
+    return new Date(...parts);
 }
 
 function abbreviateDescription(row) {
@@ -433,10 +524,11 @@ function processRow(row, rowFilters) {
         if(!skip) {
             continue;
         }
-        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0;
+        // All AND clauses are true, check OR clauses.
+        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
         if(skip) {
-            log("skipping transfer row " + row.descriptionText);
-            throw new Error("row filter: " + row.descriptionText);
+            log("skipping row " + row.descriptionText);
+            throw new Error("row filter: SKIPPING " + row.descriptionText);
         }
     }
 
@@ -454,4 +546,190 @@ function processRow(row, rowFilters) {
         dr,
         cr,
     ];
+}
+
+/*
+ *
+ *
+ * HEALTH
+ * CHECK
+ *
+ *
+ */
+const WAIT_FOR_TABLE_TOKEN = "WAIT_FOR_TABLE_TOKEN";
+function selectTable() {
+    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
+    const table = tableContainer.shadowRoot.querySelector('table');
+    if (!table) {
+        throw new Error("Could not find table");
+    }
+    return table;
+}
+function clickAccountsButton() {
+    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
+}
+const TESTS = [
+    {
+        name:"Account table is findable and has findable rows",
+        cb: async function() {
+            const tableContainer = document.querySelector(getElementSelector("tableContainer"));
+            if(!tableContainer) {
+                return "could not find container accountsTableAG1Table0"
+            }
+            const table = tableContainer.shadowRoot.querySelector('table');
+            if(!table) {
+                return "could not find nested table"
+            }
+            const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
+            if (tableRows.length < 5) {
+                return"accounts table as too few rows"
+            }
+        }
+    },
+    {
+        name:"Account table column has findable link to transaction table",
+        cb: async function() {
+            const table = selectTable();
+            const tableRows = table.querySelectorAll("tr");
+            const row = tableRows[4];
+            const headerCol = row.querySelector(getElementSelector("accountsTableRowHeader"));
+            if(!headerCol) {
+                return "could not find row heading";
+            }
+            const anchor = headerCol.querySelector("a")
+            if(!anchor) {
+                return "could not find clickable link"
+            }
+        }
+    },
+    {
+        name:"Can click on row header link and navigate account details",
+        cb: async function() {
+            const tableHash = location.hash;
+            const table = selectTable();
+            const tableRows = table.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            return new Promise((resolve) => {
+                setTimeout(()=>{
+                    const detailsHash = location.hash;
+                    clickAccountsButton();
+                    if(tableHash == detailsHash) {
+                        resolve("URL did not update after clicking link")
+                    } else {
+                        resolve();
+                    }
+                }, 25);
+            })
+        }
+    },
+    WAIT_FOR_TABLE_TOKEN,
+    {
+        name:"Can get account ID from URL",
+        cb: async function() {
+            const table = selectTable();
+            const tableRows = table.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            return new Promise((resolve) => {
+                setTimeout(()=>{
+                    const accountId = getChaseCurrentAccountNumber();
+                    clickAccountsButton();
+                    if(accountId && /^\d{6,}$/.test(accountId)) {
+                        log("found account id " + accountId);
+                        resolve();
+                    } else {
+                        resolve("could not get account id from URL");
+                    }
+                });
+            })
+        }
+    },
+    WAIT_FOR_TABLE_TOKEN,
+]
+async function _runHealthCheck() {
+    const alertOut = [];
+    let anyFailed = false;
+    for(let i in TESTS) {
+        const isRunning = await getRunning();
+        if (!isRunning) {
+            return;
+        }
+
+        chrome.runtime.sendMessage({ event: "progressBar", data: {
+            value: i,
+            max: TESTS.length,
+        }});
+
+
+        if(TESTS[i] === WAIT_FOR_TABLE_TOKEN) {
+            log("waiting for table")
+            await new Promise((resolve, reject) => {
+                const inner = (attempts) => {
+                    if(attempts > 1000) {
+                        return reject();
+                    }
+                    let table;
+                    try {
+                        table = selectTable();
+                        resolve();
+                    } catch (err) {
+                        log("waiting for table...")
+                        setTimeout(()=>{
+                            inner(attempts + 1);
+                        }, 25);
+                    }
+                }
+                inner(0);
+            });
+            log("found table")
+            continue;
+        }
+
+        log("running test index " + i);
+
+        let result;
+        let passed;
+        try {
+            result = await TESTS[i].cb();
+            passed = !result
+        } catch(err) {
+            alertOut.push(`ERROR: ${TESTS[i].name}\n${err.message}`);
+            log(`ERROR: ${TESTS[i].name}`)
+            anyFailed = true;
+        }
+        if(result) {
+            alertOut.push(`FAIL: ${TESTS[i].name}`);
+            alertOut.push(`  ${result}`);
+            log(`FAIL: ${TESTS[i].name}`)
+            anyFailed = true;
+        } else if (passed) {
+            alertOut.push(`OK: ${TESTS[i].name}`);
+            log(`PASS: ${TESTS[i].name}`)
+        }
+    }
+
+    log("tests complete");
+    if(anyFailed) {
+        alertOut.unshift("❌ FAIL * * * * *");
+    } else {
+        alertOut.unshift("✅ OK - all tests pass");
+    }
+    setTimeout(() => {
+        alert(alertOut.join("\n"));
+    }, 500);
+}
+
+async function runHealthCheck() {
+    try {
+        await _runHealthCheck();
+    }
+    catch(err) {
+        alert("Error:\n" + err.message)
+        throw err
+    } finally {
+        chrome.storage.local.set({running: false}, ()=> {
+            chrome.runtime.sendMessage({event: "healthCheckStopped"})
+        });
+    }
 }

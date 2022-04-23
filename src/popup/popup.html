@@ -60,6 +60,57 @@
                 background-color:#b3a9ff;
                 color:#0a0054;
             }
+            #start-health-check-btn {
+                margin-top: 0.6rem;
+                font-weight: bold;
+                font-size: 150%;
+                background-color:#d1cbff;
+                color:#0a0054;
+                border-radius: 10px;
+                padding:12px;
+                cursor: pointer;
+            }
+            #start-health-check-btn:hover {
+                cursor: pointer;
+                background-color:#b3a9ff;
+                color:#0a0054;
+            }
+            .lds-ring {
+                display: inline-block;
+                position: relative;
+                width: 80px;
+                height: 80px;
+            }
+            .lds-ring div {
+                box-sizing: border-box;
+                display: block;
+                position: absolute;
+                width: 50px;
+                height: 50px;
+                margin: 8px;
+                border: 12px solid #fff;
+                border-radius: 50%;
+                animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+                border-color: #fff transparent transparent transparent;
+            }
+            .lds-ring div:nth-child(1) {
+                animation-delay: -0.45s;
+            }
+            .lds-ring div:nth-child(2) {
+                animation-delay: -0.3s;
+            }
+            .lds-ring div:nth-child(3) {
+                animation-delay: -0.15s;
+            }
+            @keyframes lds-ring {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
         </style>
         <script src="popup.js">
         </script>
@@ -78,6 +129,13 @@
             <h3>Not on Account Page</h3>
         </div>
         <div id="page-found-container" class="popup-container hidden">
+            <div style="display:flex; justify-content:space-between">
+                <p style="font-weight:bold; font-size:0.9rem;">Run Health Check</p>
+                <button id="start-health-check-btn">
+                    Start
+                </button>
+            </div>
+            <hr>
             <h3>Start Bank Data Extraction</h3>
             <div id="start-scrape-error-area" class="form-row hidden">
 
@@ -104,6 +162,9 @@
         </div>
         <div id="scrape-running-container" class="popup-container hidden">
             <h2>Running</h2>
+            <div style="text-align: center;">
+                <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+            </div>
             <div class="form-row">
                 <button id="cancel-crawl-btn">
                     Cancel
