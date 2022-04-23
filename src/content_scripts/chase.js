@@ -263,7 +263,6 @@ async function scrapeData(scrapeKwargs) {
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
                 scrapeKwargs.notices.push("Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
-                console.log({notices: scrapeKwargs.notices});
                 document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
@@ -283,7 +282,6 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    console.log({finalNotices: scrapeKwargs.notices});
     downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices);
 }
 
@@ -303,9 +301,7 @@ function downloadCSVOutput(rows, notices) {
 
     const logLink = document.createElement("a");
     logLink.download = `results-${ ts }.txt`;
-    console.log({notices})
     const logLines = notices.join('\n');
-    console.log({logLines})
     logLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(logLines);
     logLink.click();
 
