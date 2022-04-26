@@ -562,8 +562,8 @@ function processRow(row, rowFilters) {
  *
  *
  */
-const WAIT_FOR_TABLE_TOKEN = "WAIT_FOR_TABLE_TOKEN";
-function selectTable() {
+const WAIT_FOR_ACCOUNT_TABLE_TOKEN = "WAIT_FOR_ACCOUNT_TABLE_TOKEN";
+function selectAccountTable() {
     const tableContainer = document.querySelector(getElementSelector("tableContainer"));
     const table = tableContainer.shadowRoot.querySelector('table');
     if (!table) {
@@ -590,12 +590,12 @@ const TESTS = [
             if (tableRows.length < 5) {
                 return"accounts table as too few rows"
             }
-        }
+        },
     },
     {
         name:"Account table column has findable link to transaction table",
         cb: async function() {
-            const table = selectTable();
+            const table = selectAccountTable();
             const tableRows = table.querySelectorAll("tr");
             const row = tableRows[4];
             const headerCol = row.querySelector(getElementSelector("accountsTableRowHeader"));
@@ -606,13 +606,13 @@ const TESTS = [
             if(!anchor) {
                 return "could not find clickable link"
             }
-        }
+        },
     },
     {
         name:"Can click on row header link and navigate account details",
         cb: async function() {
             const tableHash = location.hash;
-            const table = selectTable();
+            const table = selectAccountTable();
             const tableRows = table.querySelectorAll("tr");
             const anchor = tableRows[4].querySelector("th").querySelector("a");
             anchor.click();
@@ -627,13 +627,13 @@ const TESTS = [
                     }
                 }, 25);
             })
-        }
+        },
     },
-    WAIT_FOR_TABLE_TOKEN,
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
     {
         name:"Can get account ID from URL",
         cb: async function() {
-            const table = selectTable();
+            const table = selectAccountTable();
             const tableRows = table.querySelectorAll("tr");
             const anchor = tableRows[4].querySelector("th").querySelector("a");
             anchor.click();
@@ -649,9 +649,123 @@ const TESTS = [
                     }
                 });
             })
-        }
+        },
     },
-    WAIT_FOR_TABLE_TOKEN,
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
+    {
+        name: "Can select transaction table",
+        cb: async function() {
+            const table = selectAccountTable();
+            const tableRows = table.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            const errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                    } else {
+                        clickAccountsButton();
+                        setTimeout(resolve);
+                        return;
+                    }
+                }
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
+    {
+        name: "Can find loading message when transactions are loading",
+        cb: async function() {
+            const acctable = selectAccountTable();
+            const tableRows = acctable.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            let errMsg = await new Promise((resolve) => {
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            clickAccountsButton();
+                            return resolve("could not find transaction table");
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const loaderElem = document.querySelector(
+                        getElementSelector("transactionTableLoader")
+                    );
+                    if(!loaderElem) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            clickAccountsButton();
+                            return resolve("could not find loading message")
+                        }
+                        setTimeout(inner);
+                        return;
+                    } else {
+                        clickAccountsButton();
+                        resolve();
+                    }
+                };
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
+    {
+        name: "Can select 5+ transaction table rows",
+        cb: async function() {
+            const acctable = selectAccountTable();
+            const tableRows = acctable.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            let errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const rows = table.querySelectorAll("tr");
+                    if(rows.length < 5) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table rows")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    clickAccountsButton();
+                    setTimeout(resolve);
+                    return;
+
+                }
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
 ]
 async function _runHealthCheck() {
     const alertOut = [];
@@ -668,7 +782,7 @@ async function _runHealthCheck() {
         }});
 
 
-        if(TESTS[i] === WAIT_FOR_TABLE_TOKEN) {
+        if(TESTS[i] === WAIT_FOR_ACCOUNT_TABLE_TOKEN) {
             log("waiting for table")
             await new Promise((resolve, reject) => {
                 const inner = (attempts) => {
@@ -677,7 +791,7 @@ async function _runHealthCheck() {
                     }
                     let table;
                     try {
-                        table = selectTable();
+                        table = selectAccountTable();
                         resolve();
                     } catch (err) {
                         log("waiting for table...")
