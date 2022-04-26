@@ -310,7 +310,6 @@ function downloadCSVOutput(rows, notices) {
     );
 }
 
-
 function parseChaseAmountStringToCents(amountString) {
     if(!/^\-?\$\d/.test(amountString)) {
         throw new Error("could not parse amount text"); // starts with -$DIGIT
