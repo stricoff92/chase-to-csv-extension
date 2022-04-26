@@ -918,7 +918,7 @@ const TESTS = [
                 const confirmText = [
                     "Please confirm the collected data matches the highlighted row:",
                     ` - Date (YYYY-MM-DD): ${ISODate}`,
-                    ` - Amount (in cents): ${amountCents}`,
+                    ` - Amount (in cents): ${amountCents.toLocaleString()}`,
                     ` - Description text: ${descriptionText}`,
                     'Click OK to confirm this data is correct.',
                 ]
@@ -931,7 +931,7 @@ const TESTS = [
                         } else {
                             resolve();
                         }
-                    });
+                    }, 100);
                 });
             }
             return "could not confirm correct transaction data";
