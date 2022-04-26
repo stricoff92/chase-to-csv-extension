@@ -310,6 +310,16 @@ function downloadCSVOutput(rows, notices) {
     );
 }
 
+
+function parseChaseAmountStringToCents(amountString) {
+    if(!/^\-?\$\d/.test(amountString)) {
+        throw new Error("could not parse amount text"); // starts with -$DIGIT
+    }
+    if(!/\.\d{2}$/.test(amountString)) {
+        throw new Error("could not parse amount text"); // ends with .DIGITDIGIT
+    }
+    return Math.round(parseFloat(amountString.replace(/[^\-0-9]/g, "")));
+}
 async function scrapeTransactionData(scrapeKwargs) {
 
     const accountLinkHeader = scrapeKwargs.linksClicked[scrapeKwargs.linksClicked.length - 1];
@@ -408,7 +418,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         const amountText = row.querySelector(
             getElementSelector("transactionRowAmount")
         ).innerText;
-        const amountCents = Math.round(parseFloat(amountText.replace("$", "")) * 100);
+        const amountCents = parseChaseAmountStringToCents(amountText);
 
         let csvRow;
         try {
@@ -757,7 +767,6 @@ const TESTS = [
                     clickAccountsButton();
                     setTimeout(resolve);
                     return;
-
                 }
                 setTimeout(inner);
             });
@@ -766,6 +775,173 @@ const TESTS = [
             }
         },
     },
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
+    {
+        name: "Can select 'see more transactions' link to load more transactions.",
+        cb: async function() {
+            const acctable = selectAccountTable();
+            const tableRows = acctable.querySelectorAll("tr");
+            const anchor = tableRows[1].querySelector("th").querySelector("a");
+            anchor.click();
+            let errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const loaderElem = document.querySelector(
+                        getElementSelector("transactionTableLoader")
+                    );
+                    if(loaderElem) {
+                        log("found loader element, waiting..");
+                        setTimeout(inner, 50);
+                        return;
+                    }
+                    const seeMoreBtn = document.querySelector(
+                        getElementSelector("seeMoreTransactions")
+                    );
+                    if(!seeMoreBtn) {
+                        resolve("could not find 'see more transactions' button.")
+                    } else {
+                        resolve();
+                    }
+                };
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    {
+        name: "Date column is selectable and has expected format",
+        cb: async function () {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
+                if(dateTd) {
+                    const text = dateTd.innerText;
+                    if(!text) {
+                        continue;
+                    }
+                    if(isChaseDateString(text) && parseChaseDateString(text)) {
+                        log("chase date string format matches")
+                        return;
+                    }
+                }
+            }
+            return "could not find date column"
+        },
+    },
+    {
+        name: "Description column is selectable and has some text",
+        cb: async function () {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const descTd = row.querySelector(getElementSelector("transactionRowDescription"));
+                if(!descTd) {
+                    continue;
+                }
+                if(!descTd.innerText) {
+                    continue;
+                }
+                return;
+            }
+            return "could not find description column or text"
+        }
+    },
+    {
+        name: "can find and parse transaction amount",
+        cb: async function () {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const amountTd = row.querySelector(getElementSelector("transactionRowAmount"));
+                if(!amountTd) {
+                    continue;
+                }
+                if(!amountTd.innerText) {
+                    continue;
+                }
+                const amountCents = parseChaseAmountStringToCents(amountTd.innerText);
+                if(amountCents > 1 || amountCents < -1) {
+                    return;
+                }
+            }
+            return "could not find amount column or text";
+        },
+    },
+    {
+        name: "row confirmation test",
+        cb: async function() {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const amountTd = row.querySelector(getElementSelector("transactionRowAmount"));
+                if(!amountTd) {
+                    continue;
+                }
+                if(!amountTd.innerText) {
+                    continue;
+                }
+                const amountCents = parseChaseAmountStringToCents(amountTd.innerText);
+                const descTd = row.querySelector(getElementSelector("transactionRowDescription"));
+                if(!descTd) {
+                    continue;
+                }
+                if(!descTd.innerText) {
+                    continue;
+                }
+                const descriptionText = descTd.innerText;
+                const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
+                if(!dateTd) {
+                    continue;
+                }
+                const dateText = dateTd.innerText;
+                if(!dateText) {
+                    continue;
+                }
+                if(!isChaseDateString(dateText) ) {
+                    continue;
+                }
+                row.style.border = "1px solid #ff0000";
+                row.style.backgroundColor = "rgb(255, 255, 0, 0.2)";
+                const dateObj = parseChaseDateString(dateText);
+                const ISODate = dateObj.toISOString().slice(0, 10)
+                const confirmText = [
+                    "Please confirm the collected data matches the highlighted row:",
+                    ` - Date (YYYY-MM-DD): ${ISODate}`,
+                    ` - Amount (in cents): ${amountCents}`,
+                    ` - Description text: ${descriptionText}`,
+                    'Click OK to confirm this data is correct.',
+                ]
+                // Enter new async block so row highlight shows up on the DOM
+                // before user is prompted with an alert.
+                return await new Promise((resolve) => {
+                    setTimeout(() => {
+                        if(!confirm(confirmText.join("\n"))) {
+                            resolve("could not confirm correct transaction data");
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+            }
+            return "could not confirm correct transaction data";
+        },
+    }
 ]
 async function _runHealthCheck() {
     const alertOut = [];
@@ -794,7 +970,7 @@ async function _runHealthCheck() {
                         table = selectAccountTable();
                         resolve();
                     } catch (err) {
-                        log("waiting for table...")
+                        log("waiting for account list table...")
                         setTimeout(()=>{
                             inner(attempts + 1);
                         }, 25);
@@ -823,6 +999,7 @@ async function _runHealthCheck() {
             alertOut.push(`  ${result}`);
             log(`FAIL: ${TESTS[i].name}`)
             anyFailed = true;
+            break;
         } else if (passed) {
             alertOut.push(`OK: ${TESTS[i].name}`);
             log(`PASS: ${TESTS[i].name}`)
@@ -835,6 +1012,7 @@ async function _runHealthCheck() {
     } else {
         alertOut.unshift("✅ OK - all tests pass");
     }
+    clickAccountsButton();
     setTimeout(() => {
         alert(alertOut.join("\n"));
     }, 500);
