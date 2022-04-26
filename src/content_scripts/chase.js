@@ -186,6 +186,20 @@ function getChaseCurrentAccountNumber() {
     }
 }
 
+async function waitForElement(selector) {
+    return new Promise((resolve) => {
+        const inner = () => {
+            const elem = document.querySelector(selector);
+            if (elem) {
+                resolve(elem);
+            } else {
+                setTimeout(inner, 100);
+            }
+        }
+        inner();
+    })
+}
+
 async function scrapeData(scrapeKwargs) {
     log("scrapeData running, checking storage for running flag")
     const running = await getRunning();
@@ -196,14 +210,7 @@ async function scrapeData(scrapeKwargs) {
     }
 
     // Wait for table to load
-    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
-    if(!tableContainer) {
-        log("could not find table container, waiting")
-        setTimeout(()=>{
-            scrapeData(scrapeKwargs)
-        }, 200);
-        return
-    }
+    const tableContainer = await waitForElement(getElementSelector("tableContainer"))
 
     // Wait until table is fully expanded.
     clickSeeAllAccountsLinkIfItsThere();
@@ -230,7 +237,7 @@ async function scrapeData(scrapeKwargs) {
         // update progress bar
         chrome.runtime.sendMessage({ event: "progressBar", data: {
             value: i + 1,
-            max: tableRows.length,
+            max: Math.min(tableRows.length, scrapeKwargs.maxAccounts),
         }});
 
         // Navigate to the account page
@@ -275,7 +282,7 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices)
+    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices);
 }
 
 function getFileNameTimestamp() {
@@ -295,7 +302,7 @@ function downloadCSVOutput(rows, notices) {
     const logLink = document.createElement("a");
     logLink.download = `results-${ ts }.txt`;
     const logLines = notices.join('\n');
-    logLink.href = encodeURI("data:text/plain," + logLines);
+    logLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(logLines);
     logLink.click();
 
     alert(
@@ -303,6 +310,15 @@ function downloadCSVOutput(rows, notices) {
     );
 }
 
+function parseChaseAmountStringToCents(amountString) {
+    if(!/^\-?\$\d/.test(amountString)) {
+        throw new Error("could not parse amount text"); // starts with -$DIGIT
+    }
+    if(!/\.\d{2}$/.test(amountString)) {
+        throw new Error("could not parse amount text"); // ends with .DIGITDIGIT
+    }
+    return Math.round(parseFloat(amountString.replace(/[^\-0-9]/g, "")));
+}
 async function scrapeTransactionData(scrapeKwargs) {
 
     const accountLinkHeader = scrapeKwargs.linksClicked[scrapeKwargs.linksClicked.length - 1];
@@ -316,23 +332,22 @@ async function scrapeTransactionData(scrapeKwargs) {
         log("clicking continue with activity button");
         scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
         continueWithActivity.click();
+        setTimeout(()=>{
+            scrapeTransactionData(scrapeKwargs);
+        });
+        return;
     }
 
     // Wait for table to load
-    const table = document.querySelector(getElementSelector("transactionTable"));
-    if (!table) {
-        setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs)
-        }, 120);
-        return;
-    }
+    log("waiting for transaction table to load");
+    const table = await waitForElement(getElementSelector("transactionTable"));
 
     // Waiting for "see all activity" rows to load
     const loaderElem = document.querySelector(
         getElementSelector("transactionTableLoader")
     );
     if(loaderElem) {
-        scrapeKwargs.notices.push("DEBUG: found loader element, waiting..");
+        log("DEBUG: found loader element, waiting..");
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs);
         }, 120);
@@ -402,7 +417,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         const amountText = row.querySelector(
             getElementSelector("transactionRowAmount")
         ).innerText;
-        const amountCents = Math.round(parseFloat(amountText.replace("$", "")) * 100);
+        const amountCents = parseChaseAmountStringToCents(amountText);
 
         let csvRow;
         try {
@@ -556,14 +571,24 @@ function processRow(row, rowFilters) {
  *
  *
  */
-const WAIT_FOR_TABLE_TOKEN = "WAIT_FOR_TABLE_TOKEN";
-function selectTable() {
-    const tableContainer = document.querySelector(getElementSelector("tableContainer"));
-    const table = tableContainer.shadowRoot.querySelector('table');
-    if (!table) {
-        throw new Error("Could not find table");
-    }
-    return table;
+const WAIT_FOR_ACCOUNT_TABLE_TOKEN = "WAIT_FOR_ACCOUNT_TABLE_TOKEN";
+async function selectAccountTable() {
+    return new Promise((resolve) => {
+        const inner = () => {
+            let table;
+            try {
+                const tableContainer = document.querySelector(getElementSelector("tableContainer"));
+                table = tableContainer.shadowRoot.querySelector('table');
+            } catch (err) {
+                return setTimeout(inner, 25);
+            }
+            if (!table) {
+                return setTimeout(inner, 25);
+            }
+            resolve(table);
+        }
+        setTimeout(inner);
+    });
 }
 function clickAccountsButton() {
     document.querySelector(getElementSelector("viewAllAccountsLink")).click();
@@ -584,12 +609,12 @@ const TESTS = [
             if (tableRows.length < 5) {
                 return"accounts table as too few rows"
             }
-        }
+        },
     },
     {
         name:"Account table column has findable link to transaction table",
         cb: async function() {
-            const table = selectTable();
+            const table = await selectAccountTable();
             const tableRows = table.querySelectorAll("tr");
             const row = tableRows[4];
             const headerCol = row.querySelector(getElementSelector("accountsTableRowHeader"));
@@ -600,20 +625,19 @@ const TESTS = [
             if(!anchor) {
                 return "could not find clickable link"
             }
-        }
+        },
     },
     {
         name:"Can click on row header link and navigate account details",
         cb: async function() {
             const tableHash = location.hash;
-            const table = selectTable();
+            const table = await selectAccountTable();
             const tableRows = table.querySelectorAll("tr");
             const anchor = tableRows[4].querySelector("th").querySelector("a");
             anchor.click();
             return new Promise((resolve) => {
                 setTimeout(()=>{
                     const detailsHash = location.hash;
-                    clickAccountsButton();
                     if(tableHash == detailsHash) {
                         resolve("URL did not update after clicking link")
                     } else {
@@ -621,20 +645,14 @@ const TESTS = [
                     }
                 }, 25);
             })
-        }
+        },
     },
-    WAIT_FOR_TABLE_TOKEN,
     {
         name:"Can get account ID from URL",
         cb: async function() {
-            const table = selectTable();
-            const tableRows = table.querySelectorAll("tr");
-            const anchor = tableRows[4].querySelector("th").querySelector("a");
-            anchor.click();
             return new Promise((resolve) => {
                 setTimeout(()=>{
                     const accountId = getChaseCurrentAccountNumber();
-                    clickAccountsButton();
                     if(accountId && /^\d{6,}$/.test(accountId)) {
                         log("found account id " + accountId);
                         resolve();
@@ -643,9 +661,281 @@ const TESTS = [
                     }
                 });
             })
+        },
+    },
+    {
+        name: "Can select transaction table",
+        cb: async function() {
+            const errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                    } else {
+                        clickAccountsButton();
+                        setTimeout(resolve);
+                        return;
+                    }
+                }
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
+    {
+        name: "Can find loading message when transactions are loading",
+        cb: async function() {
+            const acctable = await selectAccountTable();
+            const tableRows = acctable.querySelectorAll("tr");
+            const anchor = tableRows[4].querySelector("th").querySelector("a");
+            anchor.click();
+            let errMsg = await new Promise((resolve) => {
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table");
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const loaderElem = document.querySelector(
+                        getElementSelector("transactionTableLoader")
+                    );
+                    if(!loaderElem) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find loading message")
+                        }
+                        setTimeout(inner);
+                        return;
+                    } else {
+                        resolve();
+                    }
+                };
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    {
+        name: "Can select 5+ transaction table rows",
+        cb: async function() {
+            let errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const rows = table.querySelectorAll("tr");
+                    if(rows.length < 5) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table rows")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    clickAccountsButton();
+                    setTimeout(resolve);
+                    return;
+                }
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    WAIT_FOR_ACCOUNT_TABLE_TOKEN,
+    {
+        name: "Can select 'see more transactions' link to load more transactions.",
+        cb: async function() {
+            const acctable = await selectAccountTable();
+            const tableRows = acctable.querySelectorAll("tr");
+            const anchor = tableRows[1].querySelector("th").querySelector("a");
+            anchor.click();
+            let errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const loaderElem = document.querySelector(
+                        getElementSelector("transactionTableLoader")
+                    );
+                    if(loaderElem) {
+                        log("found loader element, waiting..");
+                        setTimeout(inner, 50);
+                        return;
+                    }
+                    const seeMoreBtn = document.querySelector(
+                        getElementSelector("seeMoreTransactions")
+                    );
+                    if(!seeMoreBtn) {
+                        resolve("could not find 'see more transactions' button.")
+                    } else {
+                        resolve();
+                    }
+                };
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    {
+        name: "Date column is selectable and has expected format",
+        cb: async function () {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
+                if(dateTd) {
+                    const text = dateTd.innerText;
+                    if(!text) {
+                        continue;
+                    }
+                    if(isChaseDateString(text) && parseChaseDateString(text)) {
+                        log("chase date string format matches")
+                        return;
+                    }
+                }
+            }
+            return "could not find date column"
+        },
+    },
+    {
+        name: "Description column is selectable and has some text",
+        cb: async function () {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const descTd = row.querySelector(getElementSelector("transactionRowDescription"));
+                if(!descTd) {
+                    continue;
+                }
+                if(!descTd.innerText) {
+                    continue;
+                }
+                return;
+            }
+            return "could not find description column or text"
         }
     },
-    WAIT_FOR_TABLE_TOKEN,
+    {
+        name: "can find and parse transaction amount",
+        cb: async function () {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const amountTd = row.querySelector(getElementSelector("transactionRowAmount"));
+                if(!amountTd) {
+                    continue;
+                }
+                if(!amountTd.innerText) {
+                    continue;
+                }
+                const amountCents = parseChaseAmountStringToCents(amountTd.innerText);
+                if(amountCents > 1 || amountCents < -1) {
+                    return;
+                }
+            }
+            return "could not find amount column or text";
+        },
+    },
+    {
+        name: "row confirmation test",
+        cb: async function() {
+            const table = await waitForElement(getElementSelector("transactionTable"));
+            const rows = table.querySelectorAll("tr");
+            for(let i=1; i< rows.length; i++) {
+                const row = rows[i];
+                const amountTd = row.querySelector(getElementSelector("transactionRowAmount"));
+                if(!amountTd) {
+                    continue;
+                }
+                if(!amountTd.innerText) {
+                    continue;
+                }
+                const amountCents = parseChaseAmountStringToCents(amountTd.innerText);
+                const descTd = row.querySelector(getElementSelector("transactionRowDescription"));
+                if(!descTd) {
+                    continue;
+                }
+                if(!descTd.innerText) {
+                    continue;
+                }
+                const descriptionText = descTd.innerText;
+                const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
+                if(!dateTd) {
+                    continue;
+                }
+                const dateText = dateTd.innerText;
+                if(!dateText) {
+                    continue;
+                }
+                if(!isChaseDateString(dateText) ) {
+                    continue;
+                }
+                row.style.border = "1px solid #ff0000";
+                row.style.backgroundColor = "rgb(255, 255, 0, 0.2)";
+                try {
+                    row.scrollIntoView({ block: "center" });
+                } catch (err) {
+                    console.warn("could not call scrollIntoView");
+                }
+                const dateObj = parseChaseDateString(dateText);
+                const ISODate = dateObj.toISOString().slice(0, 10)
+                const confirmText = [
+                    "Please confirm the collected data matches the highlighted row:",
+                    ` - Date (YYYY-MM-DD): ${ISODate}`,
+                    ` - Amount (in cents): ${amountCents.toLocaleString()}`,
+                    ` - Description text: ${descriptionText}`,
+                    'Click OK to confirm this data is correct.',
+                ]
+                // Enter new async block so row highlight shows up on the DOM
+                // before user is prompted with an alert.
+                return await new Promise((resolve) => {
+                    setTimeout(() => {
+                        if(!confirm(confirmText.join("\n"))) {
+                            resolve("could not confirm correct transaction data");
+                        } else {
+                            resolve();
+                        }
+                    }, 100);
+                });
+            }
+            return "could not confirm correct transaction data";
+        },
+    }
 ]
 async function _runHealthCheck() {
     const alertOut = [];
@@ -662,26 +952,9 @@ async function _runHealthCheck() {
         }});
 
 
-        if(TESTS[i] === WAIT_FOR_TABLE_TOKEN) {
+        if(TESTS[i] === WAIT_FOR_ACCOUNT_TABLE_TOKEN) {
             log("waiting for table")
-            await new Promise((resolve, reject) => {
-                const inner = (attempts) => {
-                    if(attempts > 1000) {
-                        return reject();
-                    }
-                    let table;
-                    try {
-                        table = selectTable();
-                        resolve();
-                    } catch (err) {
-                        log("waiting for table...")
-                        setTimeout(()=>{
-                            inner(attempts + 1);
-                        }, 25);
-                    }
-                }
-                inner(0);
-            });
+            await selectAccountTable();
             log("found table")
             continue;
         }
@@ -703,6 +976,7 @@ async function _runHealthCheck() {
             alertOut.push(`  ${result}`);
             log(`FAIL: ${TESTS[i].name}`)
             anyFailed = true;
+            break;
         } else if (passed) {
             alertOut.push(`OK: ${TESTS[i].name}`);
             log(`PASS: ${TESTS[i].name}`)
@@ -715,6 +989,7 @@ async function _runHealthCheck() {
     } else {
         alertOut.unshift("✅ OK - all tests pass");
     }
+    clickAccountsButton();
     setTimeout(() => {
         alert(alertOut.join("\n"));
     }, 500);

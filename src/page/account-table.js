@@ -17,7 +17,7 @@ function drawTable(parent) {
     table.append(header);
 
     chrome.storage.local.get(['data'], (results) => {
-        const data = results.data;
+        const data = results.data || [];
         for(let i=0; i<data.length; i++) {
             const tr = document.createElement("tr");
             const td1 = document.createElement("td");
@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return alert("Hmmm, could not import this file.");
         }
         chrome.storage.local.get(['data'], (results) => {
-            const existingRows = results.data;
+            const existingRows = results.data || [];
             const existingBankIds = existingRows.map(r=>r[0])
             const existingAccIds = existingRows.map(r=>r[1])
 
