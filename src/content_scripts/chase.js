@@ -905,7 +905,6 @@ const TESTS = [
                 if(!isChaseDateString(dateText) ) {
                     continue;
                 }
-                row.style.border = "1px solid #ff0000";
                 row.style.backgroundColor = "rgb(255, 255, 0, 0.2)";
                 try {
                     row.scrollIntoView({ block: "center" });
