@@ -50,12 +50,8 @@ function getDefaultStartEndDate(isoDate) {
     // .map(parseInt); results in NaN values, not sure why.
     const [yearInt, monthInt, _dayInt] = isoDate.split("-").map(v=> parseInt(v));
 
-    console.log({monthInt})
     const prevMonthInt = monthInt == 1 ? 12 : monthInt - 1;
-    console.log({prevMonthInt})
-
     const prevYearInt = prevMonthInt != 12 ? yearInt : yearInt - 1;
-
     let prevDayStart = 1;
     let prevDayEnd;
     if([1, 3, 5, 7, 8, 10, 12].indexOf(prevMonthInt) != -1) {
