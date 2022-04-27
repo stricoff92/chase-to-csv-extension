@@ -46,6 +46,38 @@ function updateDebugMessage(msg) {
     document.getElementById("debug-message").innerText = msg;
 }
 
+function getDefaultStartEndDate(isoDate) {
+    // .map(parseInt); results in NaN values, not sure why.
+    const [yearInt, monthInt, _dayInt] = isoDate.split("-").map(v=> parseInt(v));
+
+    console.log({monthInt})
+    const prevMonthInt = monthInt == 1 ? 12 : monthInt - 1;
+    console.log({prevMonthInt})
+
+    const prevYearInt = prevMonthInt != 12 ? yearInt : yearInt - 1;
+
+    let prevDayStart = 1;
+    let prevDayEnd;
+    if([1, 3, 5, 7, 8, 10, 12].indexOf(prevMonthInt) != -1) {
+        prevDayEnd = 31;
+    } else if(prevMonthInt != 2) {
+        prevDayEnd = 30
+    } else {
+        const leapYears = [2024, 2028, 2032, 2036, 2040, 2044, 2048, 2052, 2056, 2060];
+        if(yearInt > leapYears[leapYears.length - 1]) {
+            console.warn("Could not calculate if leapyear or not. not autofilling date inputs.")
+            return {};
+        }
+        prevDayEnd = leapYears.indexOf(prevYearInt) != -1 ? 29 : 28
+    }
+
+    const padNumber = n => n > 9 ? n : "0" + n;
+    return {
+        start: `${prevYearInt}-${padNumber(prevMonthInt)}-${padNumber(prevDayStart)}`,
+        end: `${prevYearInt}-${padNumber(prevMonthInt)}-${padNumber(prevDayEnd)}`,
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
         chrome.storage.local.set({onPage:false});
@@ -95,6 +127,16 @@ document.addEventListener("DOMContentLoaded", () => {
             setPopupOffPage();
         }
     });
+
+    const detaultDates = getDefaultStartEndDate(
+        (new Date()).toISOString().slice(0, 10)
+    );
+    document.getElementById("new-scrape-start-date-input").value = (
+        detaultDates.start
+    );
+    document.getElementById("new-scrape-end-date-input").value = (
+        detaultDates.end
+    );
 
     document.getElementById("start-health-check-btn").addEventListener("click", () => {
         const tabQueryParams = {
