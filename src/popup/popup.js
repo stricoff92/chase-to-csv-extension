@@ -74,6 +74,8 @@ function getDefaultStartEndDate(isoDate) {
     }
 }
 
+const REQUIRED_CSV_COLUMNS = ['account', 'memo', 'dr', 'cr'];
+
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
         chrome.storage.local.set({onPage:false});
@@ -104,7 +106,14 @@ document.addEventListener("DOMContentLoaded", () => {
         sendResponse(true);
     });
 
-    chrome.storage.local.get(['onPage', 'running', 'previousTransactionFilter', 'previousAccountFilter'], (result) => {
+    const onLoadKeys = [
+        'onPage',
+        'running',
+        'previousTransactionFilter',
+        'previousAccountFilter',
+        'csvColumns',
+    ];
+    chrome.storage.local.get(onLoadKeys, (result) => {
         if(result.previousTransactionFilter) {
             document.getElementById("new-scrape-row-desc-filter").value = (
                 result.previousTransactionFilter
@@ -113,6 +122,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if(result.previousAccountFilter) {
             document.getElementById("new-scrape-acc-desc-filter").value = (
                 result.previousAccountFilter
+            );
+        }
+        if(result.csvColumns) {
+            document.getElementById("new-scrape-csv-columns").value = (
+                result.csvColumns
+            );
+        } else {
+            document.getElementById("new-scrape-csv-columns").value = (
+                JSON.stringify(REQUIRED_CSV_COLUMNS)
             );
         }
         if(result.onPage && !result.running) {
@@ -190,6 +208,19 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
+        let csvRows;
+        try {
+            csvRows = JSON.parse(
+                document.getElementById("new-scrape-csv-columns").value
+                || "[]"
+            )
+        } catch (err) {}
+        if(csvRows) {
+            chrome.storage.local.set({
+                csvColumns: JSON.stringify(csvRows)
+            });
+        }
+
         let errors = []
         if(!startDate) {
             errors.push("Start date is required.");
@@ -230,6 +261,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
+        if(!csvRows) {
+            errors.push("invalid CSV Columns format");
+        }
+        else {
+            for(let i in REQUIRED_CSV_COLUMNS) {
+                if (csvRows.indexOf(REQUIRED_CSV_COLUMNS[i]) == -1) {
+                    errors.push("missing CSV column name " + REQUIRED_CSV_COLUMNS[i]);
+                }
+            }
+        }
+
         if (errors.length) {
             errorArea.innerHTML = errors.join("<br>");
             errorArea.classList.remove("hidden");
@@ -259,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             chrome.tabs.sendMessage(
                 tabs[0].id,
-                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters, accFilters},
+                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters, accFilters, csvRows},
                 ()=>{
                     setPopupRunning();
                 },
