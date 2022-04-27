@@ -116,6 +116,7 @@ function main () {
                             {
                                 startDate: request.startDate,
                                 endDate: request.endDate,
+                                csvRows: request.csvRows,
                                 maxAccounts: request.maxAccounts,
                                 rowFilters: request.rowFilters,
                                 accFilters: request.accFilters,
@@ -315,10 +316,8 @@ function getFileNameTimestamp() {
     return (new Date()).toLocaleString().replace(/[\s\:\/\,]/g, "");
 }
 function downloadCSVOutput(rows, notices) {
-    if(!rows.length) {
-        return;
-    }
     const ts = getFileNameTimestamp()
+
     const csvLink = document.createElement("a");
     csvLink.download = `results-${ ts }.csv`;
     const csv = rows.map((v) => {return v.join(',')}).join('\n');
@@ -454,7 +453,7 @@ async function scrapeTransactionData(scrapeKwargs) {
                 rowDateObj,
                 accountingId: scrapeKwargs.accountingId,
                 chaseId: scrapeKwargs.chaseId,
-            }, scrapeKwargs.rowFilters);
+            }, scrapeKwargs.rowFilters, scrapeKwargs.csvRows);
         }
         catch (err) {
             scrapeKwargs.notices.push(err.message);
@@ -553,7 +552,7 @@ function abbreviateDescription(row) {
     return memoParts.join(" ");
 }
 
-function processRow(row, rowFilters) {
+function processRow(row, rowFilters, csvRowNames) {
     console.log({processingRow: row});
 
     // check if we should skip
@@ -592,20 +591,25 @@ function processRow(row, rowFilters) {
         }
     }
 
-    /*
-        accountId,
-        memo,
-        debitAmount,
-        creditAbout,
-    */
     const dr = row.amountCents > 0 ? (row.amountCents / 100).toFixed(2) : 0;
     const cr = row.amountCents < 0 ? (row.amountCents / -100).toFixed(2) : 0;
-    return [
-        row.accountingId,
-        abbreviateDescription(row),
-        dr,
-        cr,
-    ];
+
+    const csvRow = []
+    for(let i in csvRowNames) {
+        const colName = csvRowNames[i];
+        if(colName == "account") {
+            csvRow.push(row.accountingId)
+        } else if (colName == "memo") {
+            csvRow.push(abbreviateDescription(row))
+        } else if (colName == "dr") {
+            csvRow.push(dr);
+        } else if (colName == "cr") {
+            csvRow.push(cr);
+        } else {
+            throw new Error("unknown CSV column: " + colName)
+        }
+    }
+    return csvRow;
 }
 
 /*
