@@ -118,6 +118,7 @@ function main () {
                                 endDate: request.endDate,
                                 maxAccounts: request.maxAccounts,
                                 rowFilters: request.rowFilters,
+                                accFilters: request.accFilters,
                                 lookup,
                                 linksClicked: [],
                                 results: [],
@@ -239,6 +240,31 @@ async function scrapeData(scrapeKwargs) {
             value: i + 1,
             max: Math.min(tableRows.length, scrapeKwargs.maxAccounts),
         }});
+
+        // Check if we should skip this account
+        let skip = false
+        const sanitizedRowHeaderText = rowHeaderText.toLowerCase().replace(/\s/g, "");
+        for(let i in scrapeKwargs.accFilters) {
+            const filt = scrapeKwargs.accFilters[i];
+            if (filt.INCLUDE.length > 0) {
+                skip = filt.INCLUDE.filter(key => sanitizedRowHeaderText.indexOf(key) != -1).length == 0;
+                if(skip) {
+                    scrapeKwargs.notices.push(`skipping account ${rowHeaderText}, no INCLUDE match`);
+                    break;
+                }
+            }
+            if (filt.EXCLUDE.length > 0) {
+                skip = filt.EXCLUDE.filter(key => sanitizedRowHeaderText.indexOf(key) != -1).length > 0;
+                if(skip) {
+                    scrapeKwargs.notices.push(`skipping account ${rowHeaderText}, has EXCLUDE match`);
+                    break;
+                }
+            }
+        }
+        if(skip) {
+            log("skipping account row " + rowHeaderText)
+            continue;
+        }
 
         // Navigate to the account page
         log("checking row " + rowHeaderText);

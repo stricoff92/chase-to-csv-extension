@@ -76,10 +76,15 @@ document.addEventListener("DOMContentLoaded", () => {
         sendResponse(true);
     });
 
-    chrome.storage.local.get(['onPage', 'running', 'previousFilter'], (result) => {
-        if(result.previousFilter) {
+    chrome.storage.local.get(['onPage', 'running', 'previousTransactionFilter', 'previousAccountFilter'], (result) => {
+        if(result.previousTransactionFilter) {
             document.getElementById("new-scrape-row-desc-filter").value = (
-                result.previousFilter
+                result.previousTransactionFilter
+            );
+        }
+        if(result.previousAccountFilter) {
+            document.getElementById("new-scrape-acc-desc-filter").value = (
+                result.previousAccountFilter
             );
         }
         if(result.onPage && !result.running) {
@@ -127,12 +132,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("new-scrape-row-desc-filter").value
                 || "[]"
             )
-        } catch(err) {
-
+        } catch(err) {}
+        if(rowFilters) {
+            chrome.storage.local.set({
+                previousTransactionFilter: JSON.stringify(rowFilters)
+            });
         }
-        chrome.storage.local.set({
-            previousFilter: JSON.stringify(rowFilters)
-        });
+
+        let accFilters;
+        try{
+            accFilters = JSON.parse(
+                document.getElementById("new-scrape-acc-desc-filter").value
+                || "[]"
+            )
+        } catch(err) {}
+        if(accFilters) {
+            chrome.storage.local.set({
+                previousAccountFilter: JSON.stringify(accFilters)
+            });
+        }
 
         let errors = []
         if(!startDate) {
@@ -145,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
             errors.push("Max accounts must be positive number.");
         }
         if(!rowFilters || !Array.isArray(rowFilters)) {
-            errors.push("invalid row filter format")
+            errors.push("invalid transaction row filter format")
         } else {
             for(let i in rowFilters) {
                 if(typeof rowFilters[i].AND === "undefined" || typeof rowFilters[i].OR === "undefined") {
@@ -158,6 +176,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     errors.push(`Row filter index ${i} missing TYPE data.`)
                 } else if (rowFilters[i].TYPE != "include" && rowFilters[i].TYPE != "exclude") {
                     errors.push(`Row filter index ${i} TYPE data invalid. must use include or exclude.`)
+                }
+            }
+        }
+        if(!accFilters || !Array.isArray(accFilters)) {
+            errors.push("invalid account row filter format")
+        } else {
+            for(let i in accFilters) {
+                if(typeof accFilters[i].INCLUDE === "undefined" || typeof accFilters[i].EXCLUDE === "undefined") {
+                    errors.push(`Account filter index ${i} missing INCLUDE/EXCLUDE data.`)
+                }
+                if(!Array.isArray(accFilters[i].INCLUDE) || !Array.isArray(accFilters[i].EXCLUDE)) {
+                    errors.push(`Account filter index ${i} invalid INCLUDE/EXCLUDE format.`)
                 }
             }
         }
@@ -191,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             chrome.tabs.sendMessage(
                 tabs[0].id,
-                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters},
+                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters, accFilters},
                 ()=>{
                     setPopupRunning();
                 },
