@@ -535,15 +535,34 @@ function processRow(row, rowFilters) {
     let skip = false;
     for(let i=0; i<rowFilters.length; i++) {
         const filt = rowFilters[i];
-        skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length == filt.AND.length;
-        if(!skip) {
-            continue;
+        if(filt.TYPE === "exclude") {
+            skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length == filt.AND.length;
+            if(!skip) {
+                continue;
+            }
+            skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
+            if(skip) {
+                log("skipping row " + row.descriptionText);
+                throw new Error("excl filter: SKIPPING " + row.descriptionText);
+            }
         }
-        // All AND clauses are true, check OR clauses.
-        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
-        if(skip) {
-            log("skipping row " + row.descriptionText);
-            throw new Error("row filter: SKIPPING " + row.descriptionText);
+        else if (filt.TYPE === "include") {
+            skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length != filt.AND.length;
+            if(skip) {
+                log("skipping row " + row.descriptionText);
+                throw new Error("incl filter: SKIPPING " + row.descriptionText);
+            }
+            if(filt.OR.length == 0){
+                continue;
+            }
+            skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length == 0;
+            if(skip) {
+                log("skipping row " + row.descriptionText);
+                throw new Error("incl filter: SKIPPING " + row.descriptionText);
+            }
+        }
+        else {
+            throw new Error("unknown type")
         }
     }
 

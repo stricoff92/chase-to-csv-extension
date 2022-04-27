@@ -154,6 +154,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if(!Array.isArray(rowFilters[i].AND) || !Array.isArray(rowFilters[i].OR)) {
                     errors.push(`Row filter index ${i} has invalid AND/OR data.`);
                 }
+                if(typeof rowFilters[i].TYPE === "undefined") {
+                    errors.push(`Row filter index ${i} missing TYPE data.`)
+                } else if (rowFilters[i].TYPE != "include" && rowFilters[i].TYPE != "exclude") {
+                    errors.push(`Row filter index ${i} TYPE data invalid. must use include or exclude.`)
+                }
             }
         }
 
