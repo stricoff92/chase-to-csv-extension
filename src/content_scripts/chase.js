@@ -118,6 +118,7 @@ function main () {
                                 endDate: request.endDate,
                                 maxAccounts: request.maxAccounts,
                                 rowFilters: request.rowFilters,
+                                accFilters: request.accFilters,
                                 lookup,
                                 linksClicked: [],
                                 results: [],
@@ -240,6 +241,31 @@ async function scrapeData(scrapeKwargs) {
             max: Math.min(tableRows.length, scrapeKwargs.maxAccounts),
         }});
 
+        // Check if we should skip this account
+        let skip = false
+        const sanitizedRowHeaderText = rowHeaderText.toLowerCase().replace(/\s/g, "");
+        for(let i in scrapeKwargs.accFilters) {
+            const filt = scrapeKwargs.accFilters[i];
+            if (filt.INCLUDE.length > 0) {
+                skip = filt.INCLUDE.filter(key => sanitizedRowHeaderText.indexOf(key) != -1).length == 0;
+                if(skip) {
+                    scrapeKwargs.notices.push(`INFO skipping account ${rowHeaderText}, no INCLUDE match`);
+                    break;
+                }
+            }
+            if (filt.EXCLUDE.length > 0) {
+                skip = filt.EXCLUDE.filter(key => sanitizedRowHeaderText.indexOf(key) != -1).length > 0;
+                if(skip) {
+                    scrapeKwargs.notices.push(`INFO skipping account ${rowHeaderText}, has EXCLUDE match`);
+                    break;
+                }
+            }
+        }
+        if(skip) {
+            log("skipping account row " + rowHeaderText)
+            continue;
+        }
+
         // Navigate to the account page
         log("checking row " + rowHeaderText);
         scrapeKwargs.linksClicked.push(rowHeaderText);
@@ -262,7 +288,7 @@ async function scrapeData(scrapeKwargs) {
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
-                scrapeKwargs.notices.push("Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
+                scrapeKwargs.notices.push("INFO Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
                 document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
@@ -271,7 +297,7 @@ async function scrapeData(scrapeKwargs) {
             }
             const accountingId = scrapeKwargs.lookup.get(chaseId);
             log("row has associated ACC account " + accountingId);
-            scrapeKwargs.notices.push("Scraping CHASE account " + chaseId + " matching id: " + accountingId);
+            scrapeKwargs.notices.push("INFO Scraping CHASE account " + chaseId + " matching id: " + accountingId);
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
             });
@@ -399,7 +425,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("INFO: skipping row due to bad date, on page " + accountLinkHeader);
+            scrapeKwargs.notices.push("WARNING skipping row due to bad date, on page " + accountLinkHeader);
             continue;
         }
         log("parsing string " + dateStr)
@@ -535,15 +561,34 @@ function processRow(row, rowFilters) {
     let skip = false;
     for(let i=0; i<rowFilters.length; i++) {
         const filt = rowFilters[i];
-        skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length == filt.AND.length;
-        if(!skip) {
-            continue;
+        if(filt.TYPE === "exclude") {
+            skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length == filt.AND.length;
+            if(!skip) {
+                continue;
+            }
+            skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
+            if(skip) {
+                log("skipping row " + row.descriptionText);
+                throw new Error("DEBUG filter: SKIPPING " + row.descriptionText);
+            }
         }
-        // All AND clauses are true, check OR clauses.
-        skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
-        if(skip) {
-            log("skipping row " + row.descriptionText);
-            throw new Error("row filter: SKIPPING " + row.descriptionText);
+        else if (filt.TYPE === "include") {
+            skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length != filt.AND.length;
+            if(skip) {
+                log("skipping row " + row.descriptionText);
+                throw new Error("DEBUG incl filter: SKIPPING " + row.descriptionText);
+            }
+            if(filt.OR.length == 0){
+                continue;
+            }
+            skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length == 0;
+            if(skip) {
+                log("skipping row " + row.descriptionText);
+                throw new Error("DEBUG incl filter: SKIPPING " + row.descriptionText);
+            }
+        }
+        else {
+            throw new Error("WARNING unknown type")
         }
     }
 

@@ -46,6 +46,34 @@ function updateDebugMessage(msg) {
     document.getElementById("debug-message").innerText = msg;
 }
 
+function getDefaultStartEndDate(isoDate) {
+    // .map(parseInt); results in NaN values, not sure why.
+    const [yearInt, monthInt, _dayInt] = isoDate.split("-").map(v=> parseInt(v));
+
+    const prevMonthInt = monthInt == 1 ? 12 : monthInt - 1;
+    const prevYearInt = prevMonthInt != 12 ? yearInt : yearInt - 1;
+    let prevDayStart = 1;
+    let prevDayEnd;
+    if([1, 3, 5, 7, 8, 10, 12].indexOf(prevMonthInt) != -1) {
+        prevDayEnd = 31;
+    } else if(prevMonthInt != 2) {
+        prevDayEnd = 30
+    } else {
+        const leapYears = [2024, 2028, 2032, 2036, 2040, 2044, 2048, 2052, 2056, 2060];
+        if(yearInt > leapYears[leapYears.length - 1]) {
+            console.warn("Could not calculate if leapyear or not. not autofilling date inputs.")
+            return {};
+        }
+        prevDayEnd = leapYears.indexOf(prevYearInt) != -1 ? 29 : 28
+    }
+
+    const padNumber = n => n > 9 ? n : "0" + n;
+    return {
+        start: `${prevYearInt}-${padNumber(prevMonthInt)}-${padNumber(prevDayStart)}`,
+        end: `${prevYearInt}-${padNumber(prevMonthInt)}-${padNumber(prevDayEnd)}`,
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
         chrome.storage.local.set({onPage:false});
@@ -76,10 +104,15 @@ document.addEventListener("DOMContentLoaded", () => {
         sendResponse(true);
     });
 
-    chrome.storage.local.get(['onPage', 'running', 'previousFilter'], (result) => {
-        if(result.previousFilter) {
+    chrome.storage.local.get(['onPage', 'running', 'previousTransactionFilter', 'previousAccountFilter'], (result) => {
+        if(result.previousTransactionFilter) {
             document.getElementById("new-scrape-row-desc-filter").value = (
-                result.previousFilter
+                result.previousTransactionFilter
+            );
+        }
+        if(result.previousAccountFilter) {
+            document.getElementById("new-scrape-acc-desc-filter").value = (
+                result.previousAccountFilter
             );
         }
         if(result.onPage && !result.running) {
@@ -90,6 +123,16 @@ document.addEventListener("DOMContentLoaded", () => {
             setPopupOffPage();
         }
     });
+
+    const detaultDates = getDefaultStartEndDate(
+        (new Date()).toISOString().slice(0, 10)
+    );
+    document.getElementById("new-scrape-start-date-input").value = (
+        detaultDates.start
+    );
+    document.getElementById("new-scrape-end-date-input").value = (
+        detaultDates.end
+    );
 
     document.getElementById("start-health-check-btn").addEventListener("click", () => {
         const tabQueryParams = {
@@ -127,12 +170,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("new-scrape-row-desc-filter").value
                 || "[]"
             )
-        } catch(err) {
-
+        } catch(err) {}
+        if(rowFilters) {
+            chrome.storage.local.set({
+                previousTransactionFilter: JSON.stringify(rowFilters)
+            });
         }
-        chrome.storage.local.set({
-            previousFilter: JSON.stringify(rowFilters)
-        });
+
+        let accFilters;
+        try{
+            accFilters = JSON.parse(
+                document.getElementById("new-scrape-acc-desc-filter").value
+                || "[]"
+            )
+        } catch(err) {}
+        if(accFilters) {
+            chrome.storage.local.set({
+                previousAccountFilter: JSON.stringify(accFilters)
+            });
+        }
 
         let errors = []
         if(!startDate) {
@@ -145,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
             errors.push("Max accounts must be positive number.");
         }
         if(!rowFilters || !Array.isArray(rowFilters)) {
-            errors.push("invalid row filter format")
+            errors.push("invalid transaction row filter format")
         } else {
             for(let i in rowFilters) {
                 if(typeof rowFilters[i].AND === "undefined" || typeof rowFilters[i].OR === "undefined") {
@@ -153,6 +209,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if(!Array.isArray(rowFilters[i].AND) || !Array.isArray(rowFilters[i].OR)) {
                     errors.push(`Row filter index ${i} has invalid AND/OR data.`);
+                }
+                if(typeof rowFilters[i].TYPE === "undefined") {
+                    errors.push(`Row filter index ${i} missing TYPE data.`)
+                } else if (rowFilters[i].TYPE != "include" && rowFilters[i].TYPE != "exclude") {
+                    errors.push(`Row filter index ${i} TYPE data invalid. must use include or exclude.`)
+                }
+            }
+        }
+        if(!accFilters || !Array.isArray(accFilters)) {
+            errors.push("invalid account row filter format")
+        } else {
+            for(let i in accFilters) {
+                if(typeof accFilters[i].INCLUDE === "undefined" || typeof accFilters[i].EXCLUDE === "undefined") {
+                    errors.push(`Account filter index ${i} missing INCLUDE/EXCLUDE data.`)
+                }
+                if(!Array.isArray(accFilters[i].INCLUDE) || !Array.isArray(accFilters[i].EXCLUDE)) {
+                    errors.push(`Account filter index ${i} invalid INCLUDE/EXCLUDE format.`)
                 }
             }
         }
@@ -186,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             chrome.tabs.sendMessage(
                 tabs[0].id,
-                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters},
+                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters, accFilters},
                 ()=>{
                     setPopupRunning();
                 },

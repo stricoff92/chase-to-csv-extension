@@ -25,6 +25,12 @@
             .form-row {
                 margin: 0.5rem;
             }
+            .form-label {
+                font-style: italic;
+                font-size: 1rem;
+                color: #ffac39;
+                font-weight: bold;
+            }
             #start-scrape-error-area {
                 color: red;
                 font-weight: bold;
@@ -43,6 +49,9 @@
                 font-size: 150%;
             }
             #new-scrape-row-desc-filter {
+                width: 100%;
+            }
+            #new-scrape-acc-desc-filter {
                 width: 100%;
             }
             #start-scrape-btn {
@@ -135,22 +144,26 @@
                 </button>
             </div>
             <hr>
-            <h3>Start Bank Data Extraction</h3>
+            <h2>Start Bank Data Extraction</h2>
             <div id="start-scrape-error-area" class="form-row hidden">
 
             </div>
             <div class="form-row">
-                From<br/><input id="new-scrape-start-date-input" type="date">
+                <span class="form-label">From</span><br/><input id="new-scrape-start-date-input" type="date">
             </div>
             <div class="form-row">
-                To<br/><input id="new-scrape-end-date-input" type="date">
+                <span class="form-label">To</span><br/><input id="new-scrape-end-date-input" type="date">
             </div>
             <div class="form-row">
-                Row Desc Filters<br/>
-                <textarea id="new-scrape-row-desc-filter"></textarea>
+                <span class="form-label">Transaction Filters</span><br/>
+                <textarea id="new-scrape-row-desc-filter" spellcheck="false"></textarea>
             </div>
             <div class="form-row">
-                Max Accounts<br/>
+                <span class="form-label">Account Filters</span><br/>
+                <textarea id="new-scrape-acc-desc-filter" spellcheck="false"></textarea>
+            </div>
+            <div class="form-row">
+                <span class="form-label">Max Accounts</span><br/>
                 <input value="1000" type="number" id="start-scrape-max-rows-input">
             </div>
             <div class="form-row">
