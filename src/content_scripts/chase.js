@@ -249,14 +249,14 @@ async function scrapeData(scrapeKwargs) {
             if (filt.INCLUDE.length > 0) {
                 skip = filt.INCLUDE.filter(key => sanitizedRowHeaderText.indexOf(key) != -1).length == 0;
                 if(skip) {
-                    scrapeKwargs.notices.push(`skipping account ${rowHeaderText}, no INCLUDE match`);
+                    scrapeKwargs.notices.push(`INFO skipping account ${rowHeaderText}, no INCLUDE match`);
                     break;
                 }
             }
             if (filt.EXCLUDE.length > 0) {
                 skip = filt.EXCLUDE.filter(key => sanitizedRowHeaderText.indexOf(key) != -1).length > 0;
                 if(skip) {
-                    scrapeKwargs.notices.push(`skipping account ${rowHeaderText}, has EXCLUDE match`);
+                    scrapeKwargs.notices.push(`INFO skipping account ${rowHeaderText}, has EXCLUDE match`);
                     break;
                 }
             }
@@ -288,7 +288,7 @@ async function scrapeData(scrapeKwargs) {
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
-                scrapeKwargs.notices.push("Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
+                scrapeKwargs.notices.push("INFO Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
                 document.querySelector(getElementSelector("viewAllAccountsLink")).click();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
@@ -297,7 +297,7 @@ async function scrapeData(scrapeKwargs) {
             }
             const accountingId = scrapeKwargs.lookup.get(chaseId);
             log("row has associated ACC account " + accountingId);
-            scrapeKwargs.notices.push("Scraping CHASE account " + chaseId + " matching id: " + accountingId);
+            scrapeKwargs.notices.push("INFO Scraping CHASE account " + chaseId + " matching id: " + accountingId);
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
             });
@@ -425,7 +425,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("INFO: skipping row due to bad date, on page " + accountLinkHeader);
+            scrapeKwargs.notices.push("WARNING skipping row due to bad date, on page " + accountLinkHeader);
             continue;
         }
         log("parsing string " + dateStr)
@@ -569,14 +569,14 @@ function processRow(row, rowFilters) {
             skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length > 0 || filt.OR.length == 0;
             if(skip) {
                 log("skipping row " + row.descriptionText);
-                throw new Error("excl filter: SKIPPING " + row.descriptionText);
+                throw new Error("DEBUG filter: SKIPPING " + row.descriptionText);
             }
         }
         else if (filt.TYPE === "include") {
             skip = filt.AND.filter(val => cleanedDesc.indexOf(val) != -1).length != filt.AND.length;
             if(skip) {
                 log("skipping row " + row.descriptionText);
-                throw new Error("incl filter: SKIPPING " + row.descriptionText);
+                throw new Error("DEBUG incl filter: SKIPPING " + row.descriptionText);
             }
             if(filt.OR.length == 0){
                 continue;
@@ -584,11 +584,11 @@ function processRow(row, rowFilters) {
             skip = filt.OR.filter(val => cleanedDesc.indexOf(val) != -1).length == 0;
             if(skip) {
                 log("skipping row " + row.descriptionText);
-                throw new Error("incl filter: SKIPPING " + row.descriptionText);
+                throw new Error("DEBUG incl filter: SKIPPING " + row.descriptionText);
             }
         }
         else {
-            throw new Error("unknown type")
+            throw new Error("WARNING unknown type")
         }
     }
 
