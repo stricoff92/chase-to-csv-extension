@@ -330,7 +330,6 @@ function getFileNameTimestamp() {
     return (new Date()).toLocaleString().replace(/[\s\:\/\,]/g, "");
 }
 function downloadCSVOutput(rows, notices) {
-    console.log({rows})
     const ts = getFileNameTimestamp()
 
     const csvLink = document.createElement("a");
