@@ -318,7 +318,7 @@ async function scrapeData(scrapeKwargs) {
             scrapeKwargs.csvRows,
         ));
     } else {
-        scrapeKwargs.notices("WARNING no plug account id specified");
+        scrapeKwargs.notices.push("WARNING no plug account id specified");
     }
     downloadCSVOutput(
         scrapeKwargs.results,
