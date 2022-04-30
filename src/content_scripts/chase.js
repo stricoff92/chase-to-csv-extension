@@ -459,7 +459,9 @@ async function scrapeTransactionData(scrapeKwargs) {
         ).innerText;
 
         // Positive number results in CREDIT adj to plug
-        // account (Expense account with debit balance)
+        // account (Expense account with debit balance).
+        // Negative number results in DEBIT adj to plig
+        // account (Expense account with debit balance).
         const amountCents = parseChaseAmountStringToCents(amountText);
 
         let csvRow;
