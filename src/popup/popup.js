@@ -112,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
         'previousTransactionFilter',
         'previousAccountFilter',
         'csvColumns',
+        'plugAccountId',
     ];
     chrome.storage.local.get(onLoadKeys, (result) => {
         if(result.previousTransactionFilter) {
@@ -131,6 +132,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             document.getElementById("new-scrape-csv-columns").value = (
                 JSON.stringify(REQUIRED_CSV_COLUMNS)
+            );
+        }
+        if(result.plugAccountId) {
+            document.getElementById("new-scrape-plug-account-input").value = (
+                result.plugAccountId
             );
         }
         if(result.onPage && !result.running) {
@@ -182,6 +188,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const maxAccounts = parseInt(
             document.getElementById("start-scrape-max-rows-input").value
         );
+        const plugAccountId = document.getElementById("new-scrape-plug-account-input").value || "";
+        chrome.storage.local.set({ plugAccountId });
+
         let rowFilters;
         try{
             rowFilters = JSON.parse(
@@ -299,12 +308,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if(tabs.length == 0) {
                 return;
             }
+            const payload = {
+                event: "scrapeStarted",
+                startDate,
+                endDate,
+                maxAccounts,
+                rowFilters,
+                accFilters,
+                csvRows,
+                plugAccountId,
+            }
             chrome.tabs.sendMessage(
                 tabs[0].id,
-                {event: "scrapeStarted", startDate, endDate, maxAccounts, rowFilters, accFilters, csvRows},
-                ()=>{
-                    setPopupRunning();
-                },
+                payload,
+                setPopupRunning,
             )
         });
     });
