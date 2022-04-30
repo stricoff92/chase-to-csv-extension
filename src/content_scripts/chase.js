@@ -120,6 +120,8 @@ function main () {
                                 maxAccounts: request.maxAccounts,
                                 rowFilters: request.rowFilters,
                                 accFilters: request.accFilters,
+                                plugAccountId: request.plugAccountId,
+                                plugDebitBalanceCents: 0,
                                 lookup,
                                 linksClicked: [],
                                 results: [],
@@ -309,13 +311,26 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    downloadCSVOutput(scrapeKwargs.results, scrapeKwargs.notices);
+    if(scrapeKwargs.plugAccountId && scrapeKwargs.plugDebitBalanceCents != 0) {
+        scrapeKwargs.results.push(processPlugRow(
+            scrapeKwargs.plugAccountId,
+            scrapeKwargs.plugDebitBalanceCents,
+            scrapeKwargs.csvRows,
+        ));
+    } else {
+        scrapeKwargs.notices("WARNING no plug account id specified");
+    }
+    downloadCSVOutput(
+        scrapeKwargs.results,
+        scrapeKwargs.notices,
+    );
 }
 
 function getFileNameTimestamp() {
     return (new Date()).toLocaleString().replace(/[\s\:\/\,]/g, "");
 }
 function downloadCSVOutput(rows, notices) {
+    console.log({rows})
     const ts = getFileNameTimestamp()
 
     const csvLink = document.createElement("a");
@@ -442,6 +457,9 @@ async function scrapeTransactionData(scrapeKwargs) {
         const amountText = row.querySelector(
             getElementSelector("transactionRowAmount")
         ).innerText;
+
+        // Positive number results in CREDIT adj to plug
+        // account (Expense account with debit balance)
         const amountCents = parseChaseAmountStringToCents(amountText);
 
         let csvRow;
@@ -461,6 +479,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         if(csvRow) {
             log("recording CSV row")
             scrapeKwargs.results.push(csvRow);
+            scrapeKwargs.plugDebitBalanceCents -= amountCents;
         }
     }
 
@@ -550,6 +569,28 @@ function abbreviateDescription(row) {
     }
 
     return memoParts.join(" ");
+}
+
+function processPlugRow(plugAccountId, plugDebitBalanceCents, csvRowNames) {
+    const csvRow = [];
+    const dr = ((plugDebitBalanceCents > 0 ? plugDebitBalanceCents : 0) / 100).toFixed(2);
+    const cr = ((plugDebitBalanceCents < 0 ? plugDebitBalanceCents * -1 : 0) / 100).toFixed(2);
+    const memo = "expense account plug";
+    for(let i in csvRowNames) {
+        const colName = csvRowNames[i];
+        if(colName == "account") {
+            csvRow.push(plugAccountId)
+        } else if (colName == "memo") {
+            csvRow.push(memo);
+        } else if (colName == "dr") {
+            csvRow.push(dr);
+        } else if (colName == "cr") {
+            csvRow.push(cr);
+        } else {
+            throw new Error("unknown CSV column: " + colName)
+        }
+    }
+    return csvRow;
 }
 
 function processRow(row, rowFilters, csvRowNames) {
