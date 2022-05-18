@@ -289,8 +289,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const startDateParts = startDate.split("-");
         const endDateParts = endDate.split("-");
-        const startDateObj = new Date(startDateParts[0], startDateParts[1], startDateParts[2]);
-        const endDateObj = new Date(endDateParts[0], endDateParts[1], endDateParts[2]);
+        // are these dates right?
+        const startDateObj = new Date(startDateParts[0], startDateParts[1] - 1, startDateParts[2]);
+        const endDateObj = new Date(endDateParts[0], endDateParts[1] - 1, endDateParts[2]);
         if(startDateObj >= endDateObj) {
             errorArea.innerHTML = "Start date must be before end date.";
             errorArea.classList.remove("hidden");

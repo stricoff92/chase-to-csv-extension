@@ -789,6 +789,7 @@ const TESTS = [
             const anchor = tableRows[4].querySelector("th").querySelector("a");
             anchor.click();
             let errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0;
                 const inner = async () => {
                     const table = await waitForElement(getElementSelector("transactionTable"));
                     if(!table) {
@@ -801,7 +802,7 @@ const TESTS = [
                     }
                     const loaderElem = document.querySelector(
                         getElementSelector("transactionTableLoader")
-                    );
+                    ) ||  document.querySelector(getElementSelector("accountsTableRow"));
                     if(!loaderElem) {
                         attemptNumber++;
                         if(attemptNumber > 100) {
