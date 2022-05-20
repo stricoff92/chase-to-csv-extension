@@ -118,6 +118,9 @@ document.addEventListener("DOMContentLoaded", () => {
         'previousAccountFilter',
         'csvColumns',
         'plugAccountId',
+        'lastRunCompleted',
+        'lastRunFrom',
+        'lastRunTo',
     ];
     chrome.storage.local.get(onLoadKeys, (result) => {
         if(result.previousTransactionFilter) {
@@ -150,6 +153,21 @@ document.addEventListener("DOMContentLoaded", () => {
             setPopupRunning();
         } else {
             setPopupOffPage();
+        }
+        if(result.lastRunCompleted) {
+            document.getElementById("last-completed-data").innerText = (
+                result.lastRunCompleted
+            );
+        }
+        if(result.lastRunFrom) {
+            document.getElementById("last-from-data").innerText = (
+                result.lastRunFrom
+            );
+        }
+        if(result.lastRunTo) {
+            document.getElementById("last-to-data").innerText = (
+                result.lastRunTo
+            );
         }
     });
 

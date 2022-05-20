@@ -25,6 +25,29 @@ async function getLookupTable() {
     });
 }
 
+function isoDateToHumanDate(isoDate) {
+    if(!/^\d{4}\-[0-1][0-9]\-[0-3][0-9]$/.test(isoDate)) {
+        throw new Error("Could not parse ISO date string: " + isoDate);
+    }
+    const dropLeadingZero = numStr => numStr.replace(/^0/, '');
+    const parts = isoDate.split("-");
+    months = {
+        "01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr", "05": "May",
+        "06": "Jun", "07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct",
+        "11": "Nov", "12": "Dec",
+    };
+    return `${months[parts[1]]} ${dropLeadingZero(parts[2])}, ${parts[0]}`;
+}
+
+function updateLastRunData(scrapeKwargs) {
+    const payload = {
+        lastRunCompleted: isoDateToHumanDate((new Date()).toISOString().slice(0, 10)),
+        lastRunFrom: isoDateToHumanDate(scrapeKwargs.startDate),
+        lastRunTo: isoDateToHumanDate(scrapeKwargs.endDate),
+    };
+    chrome.storage.local.set(payload);
+}
+
 const elementSelectors = new Map([
     [
         'tableContainer',
@@ -314,6 +337,7 @@ async function scrapeData(scrapeKwargs) {
         scrapeKwargs.results,
         scrapeKwargs.notices,
     );
+    updateLastRunData(scrapeKwargs);
 }
 
 function getFileNameTimestamp() {
