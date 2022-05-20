@@ -57,6 +57,9 @@
             #new-scrape-csv-columns {
                 width: 100%
             }
+            #advanced-options-container {
+                display: none;
+            }
             #start-scrape-btn {
                 margin-top: 0.6rem;
                 font-weight: bold;
@@ -161,21 +164,28 @@
                 <span class="form-label">Plug Account ID</span><br/>
                 <input id="new-scrape-plug-account-input" type="text">
             </div>
-            <div class="form-row">
-                <span class="form-label">CSV Columns</span><br/>
-                <textarea id="new-scrape-csv-columns" spellcheck="false"></textarea>
+            <div id="show-advanced-options-container" class="form-row">
+                <a id="show-advanced-options-anchor" href="#">
+                    advanced options
+                </a>
             </div>
-            <div class="form-row">
-                <span class="form-label">Transaction Filters</span><br/>
-                <textarea id="new-scrape-row-desc-filter" spellcheck="false"></textarea>
-            </div>
-            <div class="form-row">
-                <span class="form-label">Account Filters</span><br/>
-                <textarea id="new-scrape-acc-desc-filter" spellcheck="false"></textarea>
-            </div>
-            <div class="form-row">
-                <span class="form-label">Max Accounts</span><br/>
-                <input value="1000" type="number" id="start-scrape-max-rows-input">
+            <div id="advanced-options-container">
+                <div class="form-row">
+                    <span class="form-label">CSV Columns</span><br/>
+                    <textarea id="new-scrape-csv-columns" spellcheck="false"></textarea>
+                </div>
+                <div class="form-row">
+                    <span class="form-label">Transaction Filters</span><br/>
+                    <textarea id="new-scrape-row-desc-filter" spellcheck="false"></textarea>
+                </div>
+                <div class="form-row">
+                    <span class="form-label">Account Filters</span><br/>
+                    <textarea id="new-scrape-acc-desc-filter" spellcheck="false"></textarea>
+                </div>
+                <div class="form-row">
+                    <span class="form-label">Max Accounts</span><br/>
+                    <input value="1000" type="number" id="start-scrape-max-rows-input">
+                </div>
             </div>
             <div class="form-row">
                 <button id="start-scrape-btn">

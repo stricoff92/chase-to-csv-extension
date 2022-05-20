@@ -86,6 +86,11 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.tabs.create({ url: 'src/page/account-table.html' })
     });
 
+    document.querySelector("#show-advanced-options-anchor").addEventListener("click", ()=>{
+        document.querySelector("#show-advanced-options-container").style.display = "none";
+        document.querySelector("#advanced-options-container").style.display = "block";
+    });
+
     chrome.runtime.onMessage.addListener((request, sender, sendResponse)=> {
         if(request.event === "onPage") {
             setPopupOnPage();
