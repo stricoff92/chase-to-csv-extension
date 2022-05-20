@@ -22,12 +22,29 @@
             a {
                 color: white;
             }
+            td {
+                padding-right:0.5rem;
+                font-size: 1.25rem;
+            }
+            #table-title-container {
+                margin-bottom: 0.5rem;
+            }
+            #last-run-data-container {
+                border:1px solid #ffac39;
+                padding:0.3rem;
+            }
             .form-row {
                 margin: 0.5rem;
             }
             .form-label {
                 font-style: italic;
                 font-size: 1rem;
+                color: #ffac39;
+                font-weight: bold;
+            }
+            .form-label-large {
+                font-style: italic;
+                font-size: 1.25rem;
                 color: #ffac39;
                 font-weight: bold;
             }
@@ -151,6 +168,39 @@
             </div>
             <hr>
             <h2>Start Bank Data Extraction</h2>
+
+            <div id="last-run-data-container">
+                <div id="table-title-container">
+                    <span class="form-label-large">Previous Run Info</span>
+                </div>
+                <table>
+                    <tr>
+                        <td>
+                            <strong>Last Completed</strong>
+                        </td>
+                        <td id="last-completed-data">
+
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>From</strong>
+                        </td>
+                        <td id="last-from-data">
+
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>To</strong>
+                        </td>
+                        <td id="last-to-data">
+
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
             <div id="start-scrape-error-area" class="form-row hidden">
 
             </div>
@@ -160,16 +210,16 @@
             <div class="form-row">
                 <span class="form-label">To</span><br/><input id="new-scrape-end-date-input" type="date">
             </div>
-            <div class="form-row">
-                <span class="form-label">Plug Account ID</span><br/>
-                <input id="new-scrape-plug-account-input" type="text">
-            </div>
             <div id="show-advanced-options-container" class="form-row">
                 <a id="show-advanced-options-anchor" href="#">
                     advanced options
                 </a>
             </div>
             <div id="advanced-options-container">
+                <div class="form-row">
+                    <span class="form-label">Plug Account ID</span><br/>
+                    <input id="new-scrape-plug-account-input" type="text">
+                </div>
                 <div class="form-row">
                     <span class="form-label">CSV Columns</span><br/>
                     <textarea id="new-scrape-csv-columns" spellcheck="false"></textarea>
@@ -182,7 +232,7 @@
                     <span class="form-label">Account Filters</span><br/>
                     <textarea id="new-scrape-acc-desc-filter" spellcheck="false"></textarea>
                 </div>
-                <div class="form-row">
+                <div style="display:none" class="form-row">
                     <span class="form-label">Max Accounts</span><br/>
                     <input value="1000" type="number" id="start-scrape-max-rows-input">
                 </div>
