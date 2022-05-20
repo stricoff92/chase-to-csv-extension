@@ -15,16 +15,6 @@ async function getRunning() {
     });
 }
 
-async function getLookupTable() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(['data'], (result) => {
-            /*  Mapping of BANK-ID => ACC-ID
-            */
-            resolve(new Map(result.data));
-        });
-    });
-}
-
 const elementSelectors = new Map([
     [
         'tableContainer',
@@ -105,10 +95,6 @@ function main () {
                 if(isRunning) {
                     return;
                 }
-                const lookup = await getLookupTable();
-                if(lookup.size == 0) {
-                    return alert("Cannot scrape, the lookup table is empty.");
-                }
                 sendResponse(true);
                 chrome.storage.local.set({running: true}, ()=>{
                     setTimeout(()=>{
@@ -122,7 +108,7 @@ function main () {
                                 accFilters: request.accFilters,
                                 plugAccountId: request.plugAccountId,
                                 plugDebitBalanceCents: 0,
-                                lookup,
+                                lookup: request.lookup,
                                 linksClicked: [],
                                 results: [],
                                 notices: [],
@@ -142,7 +128,7 @@ function main () {
                 chrome.storage.local.set({running: true}, runHealthCheck);
             }
         }
-        // // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
+        // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
         return true;
     });
 

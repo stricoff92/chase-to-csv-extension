@@ -82,10 +82,6 @@ document.addEventListener("DOMContentLoaded", () => {
         setPopupOffPage();
     });
 
-    document.querySelector("#view-accounts-anchor").addEventListener("click", () => {
-        chrome.tabs.create({ url: 'src/page/account-table.html' })
-    });
-
     chrome.runtime.onMessage.addListener((request, sender, sendResponse)=> {
         if(request.event === "onPage") {
             setPopupOnPage();
@@ -289,7 +285,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const startDateParts = startDate.split("-");
         const endDateParts = endDate.split("-");
-        // are these dates right?
         const startDateObj = new Date(startDateParts[0], startDateParts[1] - 1, startDateParts[2]);
         const endDateObj = new Date(endDateParts[0], endDateParts[1] - 1, endDateParts[2]);
         if(startDateObj >= endDateObj) {
@@ -298,33 +293,91 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const tabQueryParams = {
-            active: true,
-            currentWindow: true,
-            url: [
-                "https://*.chase.com/*",
-            ],
-        };
-        chrome.tabs.query(tabQueryParams, (tabs) => {
-            if(tabs.length == 0) {
+        // Process mapping CSV
+        const csvMappingInput = document.getElementById("new-scrape-mappings-input");
+        if(!csvMappingInput.value) {
+            errorArea.innerHTML = "Please Select a CSV Mapping File.";
+            errorArea.classList.remove("hidden");
+            return;
+        }
+        const csvMappingFile = csvMappingInput.files[0];
+        if(!csvMappingFile) {
+            return alert("Hmmm, could not import this file.");
+        }
+
+        const csvMappingReader = new FileReader();
+        csvMappingReader.readAsText(csvMappingFile, "UTF-8");
+        reader.onload = (event) => {
+            const csvText = event.target.result;
+            const csvRows = [];
+            const foundBankIds = [];
+            const foundAccountingIds = [];
+            const csvErrors = [];
+            const isValidId = (id) => /^[a-zA-Z0-9]+$/.test(id);
+            csvText.split("\n").forEach(row => {
+                const [c1, c2] = row.split(",");
+                if(foundBankIds.indexOf(c1) != -1) {
+                    csvErrors.push("bankID " + c1 + " is duplicated")
+                } else {
+                    foundBankIds.push(c1);
+                }
+                if(foundAccountingIds.indexOf(c2) != -1) {
+                    csvErrors.push("accounting ID " + c2 + " is duplicated")
+                } else {
+                    foundAccountingIds.push(c2);
+                }
+                const badIdMsg = " is not a valid ID. It can only contain A-Z and 0-9 characters.";
+                if(!isValidId(c1)) {
+                    csvErrors.push(c1 + badIdMsg);
+                }
+                if(!isValidId(c2)) {
+                    csvErrors.push(c2 + badIdMsg);
+                }
+                csvRows.push([c1, c2,]);
+            });
+            if (csvErrors.length) {
+                errorArea.innerHTML = csvErrors.join("<br>");
+                errorArea.classList.remove("hidden");
                 return;
             }
-            const payload = {
-                event: "scrapeStarted",
-                startDate,
-                endDate,
-                maxAccounts,
-                rowFilters,
-                accFilters,
-                csvRows,
-                plugAccountId,
+            if(!csvRows.length) {
+                errorArea.innerHTML = "No rows found in CSV file."
+                errorArea.classList.remove("hidden");
+                return;
             }
-            chrome.tabs.sendMessage(
-                tabs[0].id,
-                payload,
-                setPopupRunning,
-            )
-        });
+            const lookup = new Map(csvRows);
+
+            const tabQueryParams = {
+                active: true,
+                currentWindow: true,
+                url: [
+                    "https://*.chase.com/*",
+                ],
+            };
+            chrome.tabs.query(tabQueryParams, (tabs) => {
+                if(tabs.length == 0) {
+                    errorArea.innerHTML = "Could not find chase tab."
+                    errorArea.classList.remove("hidden");
+                    return;
+                }
+                const payload = {
+                    event: "scrapeStarted",
+                    startDate,
+                    endDate,
+                    maxAccounts,
+                    rowFilters,
+                    accFilters,
+                    csvRows,
+                    plugAccountId,
+                    lookup,
+                }
+                chrome.tabs.sendMessage(
+                    tabs[0].id,
+                    payload,
+                    setPopupRunning,
+                )
+            });
+        }
     });
 
     document.getElementById("cancel-crawl-btn").addEventListener("click", () => {

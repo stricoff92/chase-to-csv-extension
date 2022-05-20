@@ -31,6 +31,11 @@
                 color: #ffac39;
                 font-weight: bold;
             }
+            .form-label-small {
+                font-style: italic;
+                font-size: 1rem;
+                color: #ffac39;
+            }
             #start-scrape-error-area {
                 color: red;
                 font-weight: bold;
@@ -131,9 +136,6 @@
         <h1>
             Chase / Accounting
         </h1>
-        <div class="popup-container">
-            <a id="view-accounts-anchor" href="#">View Accounts</a>
-        </div>
         <div id="reset-btn-container" class="popup-container hidden">
             <button id="reset-on-page-btn">Reset</button>
         </div>
@@ -156,6 +158,12 @@
             </div>
             <div class="form-row">
                 <span class="form-label">To</span><br/><input id="new-scrape-end-date-input" type="date">
+            </div>
+            <div class="form-row">
+                <span class="form-label">Accounts CSV</span>
+                <span class="form-label-small">(BankID -> AccountingID)</span>
+                <br/>
+                <input id="new-scrape-mappings-input" type="file" accept="text/csv">
             </div>
             <div class="form-row">
                 <span class="form-label">Plug Account ID</span><br/>
