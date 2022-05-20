@@ -121,7 +121,6 @@ function main () {
                                 rowFilters: request.rowFilters,
                                 accFilters: request.accFilters,
                                 plugAccountId: request.plugAccountId,
-                                plugDebitBalanceCents: 0,
                                 lookup,
                                 linksClicked: [],
                                 results: [],
@@ -311,15 +310,6 @@ async function scrapeData(scrapeKwargs) {
         chrome.runtime.sendMessage({event: "scrapeStopped"})
     });
 
-    if(scrapeKwargs.plugAccountId && scrapeKwargs.plugDebitBalanceCents != 0) {
-        scrapeKwargs.results.push(processPlugRow(
-            scrapeKwargs.plugAccountId,
-            scrapeKwargs.plugDebitBalanceCents,
-            scrapeKwargs.csvRows,
-        ));
-    } else {
-        scrapeKwargs.notices.push("WARNING no plug account id specified");
-    }
     downloadCSVOutput(
         scrapeKwargs.results,
         scrapeKwargs.notices,
@@ -464,6 +454,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         const amountCents = parseChaseAmountStringToCents(amountText);
 
         let csvRow;
+        let csvPlugRow;
         try {
             csvRow = processRow({
                 amountCents,
@@ -473,14 +464,20 @@ async function scrapeTransactionData(scrapeKwargs) {
                 accountingId: scrapeKwargs.accountingId,
                 chaseId: scrapeKwargs.chaseId,
             }, scrapeKwargs.rowFilters, scrapeKwargs.csvRows);
+            csvPlugRow = processPlugRow(
+                scrapeKwargs.plugAccountId,
+                amountCents * -1,
+                lastName,
+                scrapeKwargs.csvRows,
+            );
         }
         catch (err) {
             scrapeKwargs.notices.push(err.message);
+            console.error(err.message);
         }
-        if(csvRow) {
-            log("recording CSV row")
-            scrapeKwargs.results.push(csvRow);
-            scrapeKwargs.plugDebitBalanceCents -= amountCents;
+        if(csvRow && csvPlugRow) {
+            log("recording CSV row");
+            scrapeKwargs.results.push(csvRow, csvPlugRow);
         }
     }
 
@@ -572,11 +569,11 @@ function abbreviateDescription(row) {
     return memoParts.join(" ");
 }
 
-function processPlugRow(plugAccountId, plugDebitBalanceCents, csvRowNames) {
+function processPlugRow(plugAccountId, plugDebitBalanceCents, lastName, csvRowNames) {
     const csvRow = [];
     const dr = ((plugDebitBalanceCents > 0 ? plugDebitBalanceCents : 0) / 100).toFixed(2);
     const cr = ((plugDebitBalanceCents < 0 ? plugDebitBalanceCents * -1 : 0) / 100).toFixed(2);
-    const memo = "expense account plug";
+    const memo = lastName;
     for(let i in csvRowNames) {
         const colName = csvRowNames[i];
         if(colName == "account") {
