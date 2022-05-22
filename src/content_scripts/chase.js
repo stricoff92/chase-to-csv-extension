@@ -85,7 +85,13 @@ const elementSelectors = new Map([
     ], [
         "transactionRowAmount",
         "td.amount",
-    ],
+    ], [
+        "fullAccountNumberLinkContainer",
+        ".routing-info",
+    ], [
+        "accountNumber",
+        ".account-number",
+    ]
 ])
 
 const getElementSelector = (name) => {
@@ -222,8 +228,9 @@ function findAndCloseModal() {
 async function openAccountDetailsModal() {
     await new Promise(resolve => {
         const innerWait = () => {
+            const selector = getElementSelector("fullAccountNumberLinkContainer");
             try {
-                document.querySelectorAll(".routing-info")[0].childNodes[0].shadowRoot.querySelector("a").click();
+                document.querySelectorAll(selector)[0].childNodes[0].shadowRoot.querySelector("a").click();
                 resolve();
             } catch(err) {
                 console.warn("could not find 'see full account number, waiting'");
@@ -237,7 +244,7 @@ async function openAccountDetailsModal() {
 async function getChaseAccountNumberFromModalAndClose() {
     return await new Promise(resolve => {
         const inner = () => {
-            const accountNumberContainer = document.querySelector(".account-number");
+            const accountNumberContainer = document.querySelector(getElementSelector("accountNumber"));
             if(accountNumberContainer && /^Account\snumber\n\d+$/.test(accountNumberContainer.innerText)) {
                 const result = accountNumberContainer.innerText.split("\n")[1];
                 findAndCloseModal();
@@ -799,17 +806,14 @@ const TESTS = [
         },
     },
     {
-        name:"Can get account ID from Modal",
+        name:"Can find show account id link",
         cb: async function() {
+            await waitForElement(getElementSelector("fullAccountNumberLinkContainer"));
+            const anchor = document.querySelectorAll(getElementSelector("fullAccountNumberLinkContainer"))[0].childNodes[0].shadowRoot.querySelector("a");
+            if (!anchor) {
+                return "Could not find 'get account number' link"
+            }
             return;
-            // await openAccountDetailsModal();
-            // const chaseId = await getChaseAccountNumberFromModalAndClose();
-            // if(chaseId && /^\d{6,}$/.test(chaseId)) {
-            //     log("found account id " + chaseId);
-            //     return;
-            // } else {
-            //     return "could not get account id from modal";
-            // }
         },
     },
     {
