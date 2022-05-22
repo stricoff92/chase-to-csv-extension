@@ -86,6 +86,10 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.tabs.create({ url: 'src/page/account-table.html' })
     });
 
+    document.querySelector("#compare-csvs-anchor").addEventListener("click", () => {
+        chrome.tabs.create({ url: 'src/page/compare-csvs.html' })
+    });
+
     document.querySelector("#show-advanced-options-anchor").addEventListener("click", ()=>{
         document.querySelector("#show-advanced-options-container").style.display = "none";
         document.querySelector("#advanced-options-container").style.display = "block";
