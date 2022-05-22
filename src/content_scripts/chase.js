@@ -85,7 +85,13 @@ const elementSelectors = new Map([
     ], [
         "transactionRowAmount",
         "td.amount",
-    ],
+    ], [
+        "fullAccountNumberLinkContainer",
+        ".routing-info",
+    ], [
+        "accountNumber",
+        ".account-number",
+    ]
 ])
 
 const getElementSelector = (name) => {
@@ -201,8 +207,7 @@ function clickSeeAllAccountsLinkIfItsThere() {
 }
 
 function canViewMoreAccounts() {
-    return !!document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
-);
+    return !!document.querySelector(getElementSelector("viewMoreAccountsLinkContainer"));
 }
 
 function getChaseCurrentAccountNumber() {
@@ -210,6 +215,46 @@ function getChaseCurrentAccountNumber() {
     if(res) {
         return res[0].split("=")[1];
     }
+}
+
+function findAndCloseModal() {
+    (document.querySelector("mds-dialog-modal")
+        .shadowRoot.querySelector("mds-sticky-footer")
+        .shadowRoot.querySelector("mds-button")
+        .click()
+    );
+}
+
+async function openAccountDetailsModal() {
+    await new Promise(resolve => {
+        const innerWait = () => {
+            const selector = getElementSelector("fullAccountNumberLinkContainer");
+            try {
+                document.querySelectorAll(selector)[0].childNodes[0].shadowRoot.querySelector("a").click();
+                resolve();
+            } catch(err) {
+                console.warn("could not find 'see full account number, waiting'");
+                setTimeout(innerWait, 20);
+            }
+        };
+        innerWait();
+    });
+}
+
+async function getChaseAccountNumberFromModalAndClose() {
+    return await new Promise(resolve => {
+        const inner = () => {
+            const accountNumberContainer = document.querySelector(getElementSelector("accountNumber"));
+            if(accountNumberContainer && /^Account\snumber\n\d+$/.test(accountNumberContainer.innerText)) {
+                const result = accountNumberContainer.innerText.split("\n")[1];
+                findAndCloseModal();
+                resolve(result);
+            } else {
+                setTimeout(inner, 25);
+            }
+        }
+        inner();
+    });
 }
 
 async function waitForElement(selector) {
@@ -297,8 +342,9 @@ async function scrapeData(scrapeKwargs) {
         tr.querySelector("a").click();
 
         // Check if extension has bank account number saved.
-        setTimeout(()=>{
-            const chaseId = getChaseCurrentAccountNumber();
+        setTimeout(async ()=>{
+            await openAccountDetailsModal();
+            const chaseId = await getChaseAccountNumberFromModalAndClose();
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
                 log("Could not find bank account id in URL, skipping.")
@@ -760,19 +806,14 @@ const TESTS = [
         },
     },
     {
-        name:"Can get account ID from URL",
+        name:"Can find show account id link",
         cb: async function() {
-            return new Promise((resolve) => {
-                setTimeout(()=>{
-                    const accountId = getChaseCurrentAccountNumber();
-                    if(accountId && /^\d{6,}$/.test(accountId)) {
-                        log("found account id " + accountId);
-                        resolve();
-                    } else {
-                        resolve("could not get account id from URL");
-                    }
-                });
-            })
+            await waitForElement(getElementSelector("fullAccountNumberLinkContainer"));
+            const anchor = document.querySelectorAll(getElementSelector("fullAccountNumberLinkContainer"))[0].childNodes[0].shadowRoot.querySelector("a");
+            if (!anchor) {
+                return "Could not find 'get account number' link"
+            }
+            return;
         },
     },
     {
