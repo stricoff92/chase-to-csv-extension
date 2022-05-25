@@ -26,6 +26,23 @@
                 margin: 1rem;
                 padding: 0.7rem;
             }
+            table, tr, td, th {
+                border-collapse: collapse;
+            }
+            tr, td {
+                border: 1px solid #888888;
+            }
+            th {
+                color: #ffffff;
+                background-color: #3b3b3b;
+                border: 1px solid #3b3b3b;
+            }
+            td, th {
+                padding: 0.32rem;
+            }
+            td {
+                text-align: right;
+            }
         </style>
         <script src="/src/page/compare-csvs-data-builder.js">
         </script>
@@ -64,6 +81,13 @@
                     Compare CSVs
                 </button>
             </div>
+        </div>
+        <div id="tables-container" style="display:none;">
+            <div style="margin: 0.5rem;">
+                <a id="show-all-anchor" href="#" style="margin-right: 0.6rem;">Show All</a>
+                <a id="hide-all-anchor" href="#">Hide All</a>
+            </div>
+
         </div>
     </body>
 </html>

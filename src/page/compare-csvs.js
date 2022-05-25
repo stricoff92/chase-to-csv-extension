@@ -87,17 +87,75 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        document.getElementById("data-entry-form").style.display = "none";
+
         const baseCSVdata = await csvToArray(fileBase, csvColumns);
         const currCSVdata = await csvToArray(fileCurr, csvColumns);
-
         const summaries = getAccountSummaries(
             currCSVdata,
             baseCSVdata,
             plugAccountId,
         );
 
-        console.log(summaries);
+
         const tablesData = getTablesData(summaries);
+        const tablesContainer = document.getElementById("tables-container");
+        tablesContainer.style.display = "block";
+
+        // Draw Tables
+        for(let i=0; i<tablesData.length; i++) {
+            let tableData = tablesData[i];
+
+            let tableContainer = document.createElement("div");
+            tableContainer.style.margin = "1rem";
+
+            let tableTitle = document.createElement("a");
+            tableTitle.href = "#";
+            tableTitle.innerText = `${tableData.title} (${tableData.rows.length})`;
+            tableTitle.style.fontWeight = "bold";
+            tableTitle.style.fontSize = "1rem";
+
+            let dataTable = document.createElement("table");
+            dataTable.style.display = "none";
+            tableTitle.addEventListener("click", () => {
+                dataTable.style.display = dataTable.style.display == "none" ? "block" : "none";
+            });
+
+            let titleRow = document.createElement("tr");
+            tableData.columns.forEach(heading => {
+                let th = document.createElement("th");
+                th.innerText = heading;
+                titleRow.append(th);
+            });
+            dataTable.append(titleRow);
+
+            tableData.rows.forEach(rowSpans => {
+                let tr = document.createElement("tr");
+                rowSpans.forEach(span => {
+                    let td = document.createElement("td");
+                    td.append(span);
+                    tr.append(td);
+                });
+                dataTable.append(tr);
+            });
+
+            tableContainer.append(tableTitle);
+            tableContainer.append(dataTable);
+            tablesContainer.append(tableContainer);
+        }
+
+
+        // Add final click handlers
+        document.getElementById("show-all-anchor").addEventListener('click', () => {
+            document.querySelectorAll("table").forEach(t => {
+                t.style.display = "block";
+            });
+        });
+        document.getElementById("hide-all-anchor").addEventListener('click', () => {
+            document.querySelectorAll("table").forEach(t => {
+                t.style.display = "none";
+            });
+        });
 
     });
 
