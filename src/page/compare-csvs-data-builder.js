@@ -38,6 +38,8 @@ function getSummary(rows, account) {
         movementPercentChange: 0,
         inflowPercentChange: 0,
         outflowPercentChange: 0,
+        transactionCountPercentChange: 0,
+
     };
 
     for(let i=0; i<rows.length; i++) {
@@ -91,6 +93,10 @@ function getSummary(rows, account) {
             data.baseOutflowAmount,
             data.currentOutflowAmount,
         );
+        data.transactionCountPercentChange = calculatePercentDelta(
+            data.baseCount,
+            data.currentCount,
+        )
     }
 
     return data;

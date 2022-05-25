@@ -27,7 +27,7 @@ function createPercentageSpan(value) {
 }
 
 
-function getTablesData(accountSummaries, outflowThreshold) {
+function getTablesData(accountSummaries, accToBankMap, outflowThreshold) {
     /* Returned data structure
         [
             {
@@ -55,7 +55,10 @@ function getTablesData(accountSummaries, outflowThreshold) {
     const cliffs = accountSummaries.filter(s => s.isCliff);
     cliffs.sort((a, b) => b.currentCount - a.currentCount);
     table.rows = cliffs.map(summary => ([
-        createTextSpan(summary.account, true),
+        createTextSpan(
+            `${summary.account} (${accToBankMap.get(summary.account)})`,
+            true,
+        ),
         createTextSpan(summary.baseCount),
         createTextSpan(summary.currentCount),
         createCurrencySpan(summary.baseMovementAmount),
@@ -79,7 +82,10 @@ function getTablesData(accountSummaries, outflowThreshold) {
     );
     topOutflows.sort((a, b) => b.currentOutflowAmount - a.currentOutflowAmount)
     table.rows = topOutflows.map(summary => ([
-        createTextSpan(summary.account, true),
+        createTextSpan(
+            `${summary.account} (${accToBankMap.get(summary.account)})`,
+            true,
+        ),
         createCurrencySpan(summary.currentOutflowAmount),
         createCurrencySpan(summary.currentMovementAmount),
         createCurrencySpan(summary.baseOutflowAmount),
@@ -99,7 +105,9 @@ function getTablesData(accountSummaries, outflowThreshold) {
         "% Change",
     ];
     const MMChangePerc = accountSummaries.filter(s => !s.isCliff);
-    MMChangePerc.sort((a, b) => b.movementPercentChange - a.movementPercentChange);
+    MMChangePerc.sort(
+        (a, b) => b.movementPercentChange - a.movementPercentChange
+    );
     const topMMPercChanges = [];
     for(let i=0; i<count; i++) {
         if(MMChangePerc[i]) {
@@ -113,7 +121,10 @@ function getTablesData(accountSummaries, outflowThreshold) {
         }
     }
     table.rows = topMMPercChanges.map(summary => ([
-        createTextSpan(summary.account, true),
+        createTextSpan(
+            `${summary.account} (${accToBankMap.get(summary.account)})`,
+            true,
+        ),
         createCurrencySpan(summary.currentMovementAmount),
         createCurrencySpan(summary.baseMovementAmount),
         createPercentageSpan(summary.movementPercentChange),
@@ -121,7 +132,43 @@ function getTablesData(accountSummaries, outflowThreshold) {
     tables.push(table);
 
 
+    // Top % Changes in Transaction Count
+    count = 5;
+    table = {};
+    table.title = "Top % Change in Transaction Count";
+    table.columns = [
+        "Account",
+        "Curr. Transaction Ct.",
+        "Base Transaction Ct.",
+        "% Change",
+    ];
+    const TCChangePerc = accountSummaries.filter(s => !s.isCliff);
+    TCChangePerc.sort(
+        (a, b) => b.transactionCountPercentChange - a.transactionCountPercentChange
+    );
+    const topTCPercChanges = [];
+    for(let i=0; i<count; i++) {
+        if(TCChangePerc[i]) {
+            topTCPercChanges.push(TCChangePerc[i]);
+        }
+    }
+    for(let i=0; i<count; i++) {
+        let j = TCChangePerc.length - (i + 1);
+        if(TCChangePerc[j]) {
+            topTCPercChanges.push(TCChangePerc[j]);
+        }
+    }
+    table.rows = topTCPercChanges.map(summary => ([
+        createTextSpan(
+            `${summary.account} (${accToBankMap.get(summary.account)})`,
+            true,
+        ),
+        createTextSpan(summary.currentCount),
+        createTextSpan(summary.baseCount),
+        createPercentageSpan(summary.transactionCountPercentChange),
+    ]));
+    tables.push(table);
+
+
     return tables;
-
-
 }

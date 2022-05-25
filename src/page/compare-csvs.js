@@ -22,6 +22,20 @@ async function csvToArray(fileHandle, columns) {
     });
 }
 
+async function getBankToAccountingMapping() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['data'], (result) => {
+            /* Mapping of ACC-ID => BANK-ID
+            */
+            resolve(
+                new Map(result.data.map(
+                    row=>([row[1], row[0]])
+                ))
+            );
+        });
+    });
+}
+
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -102,10 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
             plugAccountId,
         );
 
-        console.log({ summaries });
-
-
-        const tablesData = getTablesData(summaries, outflowThreshold);
+        const accToBankMap =  await getBankToAccountingMapping();
+        const tablesData = getTablesData(summaries, accToBankMap, outflowThreshold);
         const tablesContainer = document.getElementById("tables-container");
         tablesContainer.style.display = "block";
 
@@ -131,6 +143,13 @@ document.addEventListener("DOMContentLoaded", () => {
             let titleRow = document.createElement("tr");
             tableData.columns.forEach(heading => {
                 let th = document.createElement("th");
+                if(heading.toLowerCase().indexOf("curr. ") == 0) {
+                    th.style.backgroundColor = "#004d1d";
+                } else if (heading.toLowerCase().indexOf("base ") == 0) {
+                    th.style.backgroundColor = "#06004d";
+                } else {
+                    th.style.backgroundColor = "#3b3b3b";
+                }
                 th.innerText = heading;
                 titleRow.append(th);
             });
