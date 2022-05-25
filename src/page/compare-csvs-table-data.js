@@ -27,7 +27,7 @@ function createPercentageSpan(value) {
 }
 
 
-function getTablesData(accountSummaries) {
+function getTablesData(accountSummaries, outflowThreshold) {
     /* Returned data structure
         [
             {
@@ -46,11 +46,13 @@ function getTablesData(accountSummaries) {
     table.title = 'Activity Cliffs';
     table.columns = [
         "Account",
-        "Base Transaction Ct.", "Curr. Transaction Ct.",
-        "Base Money Movement", "Curr. Money Movement",
+        "Base Transaction Ct.",
+        "Curr. Transaction Ct.",
+        "Base Money Movement",
+        "Curr. Money Movement",
     ];
     const cliffs = accountSummaries.filter(s => s.isCliff);
-    cliffs.sort((a, b) => a.currentCount - b.currentCount);
+    cliffs.sort((a, b) => b.currentCount - a.currentCount);
     table.rows = cliffs.map(summary => ([
         createTextSpan(summary.account, true),
         createTextSpan(summary.baseCount),
@@ -61,6 +63,28 @@ function getTablesData(accountSummaries) {
     tables.push(table);
 
 
+    // Top outflow amounts
+    table = {};
+    table.title = "Top Outflows Over Threshold";
+    table.columns = [
+        "Account",
+        "Curr. Outflow Amt",
+        "Curr. Money Movement Amt.",
+        "Base Outflow Amt",
+        "Base Money Movement Amt.",
+    ];
+    const topOutflows = accountSummaries.filter(
+        s => s.currentOutflowAmount >= outflowThreshold
+    );
+    topOutflows.sort((a, b) => b.currentOutflowAmount - a.currentOutflowAmount)
+    table.rows = topOutflows.map(summary => ([
+        createTextSpan(summary.account, true),
+        createCurrencySpan(summary.currentOutflowAmount),
+        createCurrencySpan(summary.currentMovementAmount),
+        createCurrencySpan(summary.baseOutflowAmount),
+        createCurrencySpan(summary.baseMovementAmount),
+    ]));
+    tables.push(table);
 
     return tables;
 

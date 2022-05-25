@@ -69,6 +69,11 @@ document.addEventListener("DOMContentLoaded", () => {
             errors.push("plug account id is required");
         }
 
+        const outflowThreshold = parseInt(document.querySelector("#outflow-threshold-input").value);
+        if(!outflowThreshold || outflowThreshold < 0) {
+            errors.push("invalid outflow threshold");
+        }
+
         const fileInputBase = document.getElementById("base-csv-file-input");
         const fileInputCurr = document.getElementById("current-csv-file-input");
         if(!fileInputBase.value || !fileInputCurr.value) {
@@ -98,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
 
-        const tablesData = getTablesData(summaries);
+        const tablesData = getTablesData(summaries, outflowThreshold);
         const tablesContainer = document.getElementById("tables-container");
         tablesContainer.style.display = "block";
 
