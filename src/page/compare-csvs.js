@@ -13,10 +13,12 @@ async function csvToArray(fileHandle, columns) {
                 columns.forEach((colName, colNameIx) => {
                     rowObj[colName] = rowArr[colNameIx];
                 });
+                rowObj.cr = parseFloat(rowObj.cr);
+                rowObj.dr = parseFloat(rowObj.dr);
                 rows.push(rowObj);
             });
             resolve(rows);
-        }
+        };
     });
 }
 
@@ -88,8 +90,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const baseCSVdata = await csvToArray(fileBase, csvColumns);
         const currCSVdata = await csvToArray(fileCurr, csvColumns);
 
-        console.log(baseCSVdata)
-        console.log(currCSVdata)
+        const summaries = getAccountSummaries(
+            currCSVdata,
+            baseCSVdata,
+            plugAccountId,
+        );
+
+        console.log(summaries);
+        const tablesData = getTablesData(summaries);
 
     });
 
