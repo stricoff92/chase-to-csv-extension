@@ -13,7 +13,7 @@ function createCurrencySpan(value) {
     if(value < 0) {
         s.style.color = "#ff0000";
     }
-    s.innerText = "$ " + value.toFixed(2);
+    s.innerText = "$ " + Math.round(value).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     return s;
 }
 
@@ -93,6 +93,33 @@ function getTablesData(accountSummaries, accToBankMap, outflowThreshold) {
     ]));
     tables.push(table);
 
+    // Top inflows
+    table = {};
+    count = 5;
+    table.title = "Top Inflow Amounts";
+    table.columns = [
+        "Account",
+        "Curr. Inflow Amt.",
+        "Curr. Money Movement Amt.",
+        "Base Inflow Amt.",
+        "Base Money Movement Amt.",
+    ];
+    let topInflows = accountSummaries.filter(s => true);
+    topInflows.sort((a, b) => b.currentInflowAmount - a.currentInflowAmount);
+    table.rows = topInflows
+        .slice(0, count)
+        .filter(s => s.currentInflowAmount > 0)
+        .map(summary => ([
+            createTextSpan(
+                `${summary.account} (${accToBankMap.get(summary.account)})`,
+                true,
+            ),
+            createCurrencySpan(summary.currentInflowAmount),
+            createCurrencySpan(summary.currentMovementAmount),
+            createCurrencySpan(summary.baseInflowAmount),
+            createCurrencySpan(summary.baseMovementAmount),
+        ]));
+    tables.push(table);
 
     // Top % Changes in Money Movement
     count = 5;

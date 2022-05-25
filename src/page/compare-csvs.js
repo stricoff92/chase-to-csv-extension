@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle.href = "#";
             tableTitle.innerText = `${tableData.title} (${tableData.rows.length})`;
             tableTitle.style.fontWeight = "bold";
-            tableTitle.style.fontSize = "1rem";
+            tableTitle.style.fontSize = "0.8rem";
 
             let dataTable = document.createElement("table");
             dataTable.style.display = "none";
