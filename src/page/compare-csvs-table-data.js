@@ -40,6 +40,7 @@ function getTablesData(accountSummaries, outflowThreshold) {
     */
     const tables = [];
     let table;
+    let count;
 
     // Cliffs
     table = {};
@@ -68,9 +69,9 @@ function getTablesData(accountSummaries, outflowThreshold) {
     table.title = "Top Outflows Over Threshold";
     table.columns = [
         "Account",
-        "Curr. Outflow Amt",
+        "Curr. Outflow Amt.",
         "Curr. Money Movement Amt.",
-        "Base Outflow Amt",
+        "Base Outflow Amt.",
         "Base Money Movement Amt.",
     ];
     const topOutflows = accountSummaries.filter(
@@ -85,6 +86,40 @@ function getTablesData(accountSummaries, outflowThreshold) {
         createCurrencySpan(summary.baseMovementAmount),
     ]));
     tables.push(table);
+
+
+    // Top % Changes in Money Movement
+    count = 5;
+    table = {};
+    table.title = "Top % Change in Money Movement";
+    table.columns = [
+        "Account",
+        "Curr. Money Movement Amt.",
+        "Base Money Movement Amt.",
+        "% Change",
+    ];
+    const MMChangePerc = accountSummaries.filter(s => !s.isCliff);
+    MMChangePerc.sort((a, b) => b.movementPercentChange - a.movementPercentChange);
+    const topMMPercChanges = [];
+    for(let i=0; i<count; i++) {
+        if(MMChangePerc[i]) {
+            topMMPercChanges.push(MMChangePerc[i]);
+        }
+    }
+    for(let i=0; i<count; i++) {
+        let j = MMChangePerc.length - (i + 1);
+        if(MMChangePerc[j]) {
+            topMMPercChanges.push(MMChangePerc[j]);
+        }
+    }
+    table.rows = topMMPercChanges.map(summary => ([
+        createTextSpan(summary.account, true),
+        createCurrencySpan(summary.currentMovementAmount),
+        createCurrencySpan(summary.baseMovementAmount),
+        createPercentageSpan(summary.movementPercentChange),
+    ]));
+    tables.push(table);
+
 
     return tables;
 

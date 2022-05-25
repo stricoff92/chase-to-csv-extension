@@ -102,6 +102,8 @@ document.addEventListener("DOMContentLoaded", () => {
             plugAccountId,
         );
 
+        console.log({ summaries });
+
 
         const tablesData = getTablesData(summaries, outflowThreshold);
         const tablesContainer = document.getElementById("tables-container");
