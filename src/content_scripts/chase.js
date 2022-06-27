@@ -631,7 +631,7 @@ function abbreviateDescription(row) {
                 .split("")
                 .filter(c=>/[a-z0-9]/.test(c))
                 .join("")
-                .slice(0, 10)
+                .slice(0, 15)
         );
         memoParts.push(cleanedDescr);
     }
