@@ -124,6 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Draw Tables
         for(let i=0; i<tablesData.length; i++) {
             let tableData = tablesData[i];
+            console.log({tableData})
 
             let tableContainer = document.createElement("div");
             tableContainer.style.margin = "1rem";
@@ -132,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle.href = "#";
             tableTitle.innerText = `${tableData.title} (${tableData.rows.length})`;
             tableTitle.style.fontWeight = "bold";
-            tableTitle.style.fontSize = "0.8rem";
+            tableTitle.style.fontSize = "1.2rem";
 
             let dataTable = document.createElement("table");
             dataTable.style.display = "none";

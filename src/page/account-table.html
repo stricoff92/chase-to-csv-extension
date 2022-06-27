@@ -62,8 +62,13 @@
             #percentage-usage {
                 font-weight: bold;
             }
-            #download-as-csv-container {
+            #action-links-container {
+                max-width: 250px;
                 margin-bottom: 0.25rem;
+            }
+            #delete-lookup-anchor {
+                color: #f00;
+                margin-left: 2rem;
             }
         </style>
         <script src="/src/page/account-table.js">
@@ -118,8 +123,9 @@
                 <progress id="storage-usage-progress"></progress>
             </div>
         </div>
-        <div id="download-as-csv-container">
+        <div id="action-links-container">
             <a href="#" id="export-to-csv-anchor">Export to CSV</a>
+            <a href="#" id="delete-lookup-anchor">DELETE ALL ROWS</a>
         </div>
         <div id="table-container">
         </div>

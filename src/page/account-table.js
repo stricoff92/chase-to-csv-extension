@@ -206,4 +206,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     })
+
+    document.getElementById("delete-lookup-anchor").addEventListener("click", ()=> {
+        const msg = "You are about to delete this table. Make sure you have downloaded an up to date copy before continuing.\n\nContinue?";
+        if(!confirm(msg)) {
+            return;
+        }
+        chrome.storage.local.set({data: []}, ()=>{
+            location.reload();
+        });
+    })
 });
