@@ -525,20 +525,22 @@ async function scrapeTransactionData(scrapeKwargs) {
 
         let csvRow;
         let csvPlugRow;
+        const data = {
+            amountCents,
+            descriptionText,
+            lastName,
+            rowDateObj,
+            accountingId: scrapeKwargs.accountingId,
+            chaseId: scrapeKwargs.chaseId,
+        };
         try {
-            csvRow = processRow({
-                amountCents,
-                descriptionText,
-                lastName,
-                rowDateObj,
-                accountingId: scrapeKwargs.accountingId,
-                chaseId: scrapeKwargs.chaseId,
-            }, scrapeKwargs.rowFilters, scrapeKwargs.csvRows);
+            csvRow = processRow(data, scrapeKwargs.rowFilters, scrapeKwargs.csvRows);
             csvPlugRow = processPlugRow(
                 scrapeKwargs.plugAccountId,
                 amountCents * -1,
                 lastName,
                 scrapeKwargs.csvRows,
+                data,
             );
         }
         catch (err) {
@@ -607,6 +609,14 @@ function parseISODateString(dateString) {
     return new Date(...parts);
 }
 
+function is_USCIS_Check(memo) {
+    const lcm = memo.toLowerCase();
+    return Boolean(
+        lcm.indexOf("name:uscis") != -1
+        && [...lcm.matchAll(/id\:\d{4,}/g)].length > 0
+    );
+}
+
 function abbreviateDescription(row) {
     let memoParts = [];
 
@@ -623,7 +633,20 @@ function abbreviateDescription(row) {
         // Check number.
         let checkNumPart = row.descriptionText.replace("#", "").replace(/\s/g, '');
         memoParts.push(checkNumPart);
-    } else {
+    }
+    else if (is_USCIS_Check(row.descriptionText)){
+        const idMatches = [
+            ...row.descriptionText
+                .toLowerCase()
+                .matchAll(/id\:\d{4,}/g)
+        ];
+        const matchCt = idMatches.length;
+        if(matchCt == 0) {
+            throw new Error("Could not extract USCIS id")
+        }
+        memoParts.push(`USCIS ${ idMatches[matchCt - 1][0] }`);
+    }
+    else {
         // Misc transaction description.
         let cleanedDescr = (
             row.descriptionText
@@ -639,11 +662,11 @@ function abbreviateDescription(row) {
     return memoParts.join(" ");
 }
 
-function processPlugRow(plugAccountId, plugDebitBalanceCents, lastName, csvRowNames) {
+function processPlugRow(plugAccountId, plugDebitBalanceCents, lastName, csvRowNames, row) {
     const csvRow = [];
     const dr = ((plugDebitBalanceCents > 0 ? plugDebitBalanceCents : 0) / 100).toFixed(2);
     const cr = ((plugDebitBalanceCents < 0 ? plugDebitBalanceCents * -1 : 0) / 100).toFixed(2);
-    const memo = lastName;
+    const memo = abbreviateDescription(row);
     for(let i in csvRowNames) {
         const colName = csvRowNames[i];
         if(colName == "account") {
