@@ -124,6 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Draw Tables
         for(let i=0; i<tablesData.length; i++) {
             let tableData = tablesData[i];
+            console.log({tableData})
 
             let tableContainer = document.createElement("div");
             tableContainer.style.margin = "1rem";

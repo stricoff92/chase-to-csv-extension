@@ -196,6 +196,31 @@ function getTablesData(accountSummaries, accToBankMap, outflowThreshold) {
     ]));
     tables.push(table);
 
+    // Transaction Counts + total money movement
+    // for all accounts
+    count = null;
+    table = {};
+    table.title = "Transaction Counts & Money Movement";
+    table.columns = [
+        "Account",
+        "Curr. Transaction Ct.",
+        "Base Transaction Ct.",
+        "Curr. Money Movement",
+        "Base Money Movement",
+    ];
+    const allAccountsData = accountSummaries.filter(s => true);
+    allAccountsData.sort((a, b) => b.currentCount - a.currentCount);
+    table.rows = allAccountsData.map(summary => ([
+        createTextSpan(
+            `${summary.account} (${accToBankMap.get(summary.account)})`,
+            true,
+        ),
+        createTextSpan(summary.currentCount),
+        createTextSpan(summary.baseCount),
+        createCurrencySpan(summary.currentMovementAmount),
+        createCurrencySpan(summary.baseMovementAmount),
+    ]));
+    tables.push(table);
 
     return tables;
 }
