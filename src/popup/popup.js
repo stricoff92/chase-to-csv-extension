@@ -80,10 +80,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     await new Promise(resolve => {
         chrome.tabs.query({url: ["https://*.chase.com/*"]}, (tabs) => {
             if(tabs.length == 0) {
-                chrome.storage.local.set({onPage:false});
                 setPopupOffPage();
+                chrome.storage.local.set({onPage:false}, ()=>{
+                    resolve();
+                });
+            } else {
+                resolve();
             }
-            resolve();
         })
     });
 
