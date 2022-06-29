@@ -76,7 +76,17 @@ function getDefaultStartEndDate(isoDate) {
 
 const REQUIRED_CSV_COLUMNS = ['account', 'memo', 'dr', 'cr'];
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await new Promise(resolve => {
+        chrome.tabs.query({url: ["https://*.chase.com/*"]}, (tabs) => {
+            if(tabs.length == 0) {
+                chrome.storage.local.set({onPage:false});
+                setPopupOffPage();
+            }
+            resolve();
+        })
+    })
+
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
         chrome.storage.local.set({onPage:false});
         setPopupOffPage();
