@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             resolve();
         })
-    })
+    });
 
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
         chrome.storage.local.set({onPage:false});
