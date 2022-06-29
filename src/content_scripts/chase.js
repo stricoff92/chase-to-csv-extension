@@ -146,6 +146,7 @@ function main () {
                                 startDate: request.startDate,
                                 endDate: request.endDate,
                                 csvRows: request.csvRows,
+                                prefixColumns: request.prefixColumns,
                                 maxAccounts: request.maxAccounts,
                                 rowFilters: request.rowFilters,
                                 accFilters: request.accFilters,
@@ -532,6 +533,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             rowDateObj,
             accountingId: scrapeKwargs.accountingId,
             chaseId: scrapeKwargs.chaseId,
+            prefixColumns: scrapeKwargs.prefixColumns,
         };
         try {
             csvRow = processRow(data, scrapeKwargs.rowFilters, scrapeKwargs.csvRows);
@@ -664,6 +666,9 @@ function abbreviateDescription(row) {
 
 function processPlugRow(plugAccountId, plugDebitBalanceCents, lastName, csvRowNames, row) {
     const csvRow = [];
+    if(row.prefixColumns && row.prefixColumns.length > 0) {
+        csvRow.push(...row.prefixColumns);
+    }
     const dr = ((plugDebitBalanceCents > 0 ? plugDebitBalanceCents : 0) / 100).toFixed(2);
     const cr = ((plugDebitBalanceCents < 0 ? plugDebitBalanceCents * -1 : 0) / 100).toFixed(2);
     const memo = abbreviateDescription(row);
@@ -727,6 +732,10 @@ function processRow(row, rowFilters, csvRowNames) {
     const cr = row.amountCents < 0 ? (row.amountCents / -100).toFixed(2) : 0;
 
     const csvRow = []
+    if(row.prefixColumns && row.prefixColumns.length > 0) {
+        csvRow.push(...row.prefixColumns);
+    }
+
     for(let i in csvRowNames) {
         const colName = csvRowNames[i];
         if(colName == "account") {
