@@ -121,6 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
         'previousTransactionFilter',
         'previousAccountFilter',
         'csvColumns',
+        'prefixColumns',
         'plugAccountId',
         'lastRunCompleted',
         'lastRunFrom',
@@ -144,6 +145,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             document.getElementById("new-scrape-csv-columns").value = (
                 JSON.stringify(REQUIRED_CSV_COLUMNS)
+            );
+        }
+        if(result.prefixColumns) {
+            document.getElementById("new-scrape-column-prefixes").value = (
+                result.prefixColumns
             );
         }
         if(result.plugAccountId) {
@@ -257,6 +263,19 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
+        let prefixColumns;
+        try {
+            prefixColumns = JSON.parse(
+                document.getElementById("new-scrape-column-prefixes").value
+                || "[]"
+            )
+        } catch (err) {}
+        if(prefixColumns) {
+            chrome.storage.local.set({
+                prefixColumns: JSON.stringify(prefixColumns)
+            });
+        }
+
         let errors = []
         if(!startDate) {
             errors.push("Start date is required.");
@@ -344,6 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 rowFilters,
                 accFilters,
                 csvRows,
+                prefixColumns,
                 plugAccountId,
             }
             chrome.tabs.sendMessage(
