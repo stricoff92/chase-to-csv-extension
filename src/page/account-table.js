@@ -175,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const newRows = [];
                 const errors = [];
                 result.split("\n").forEach((row, ix)=>{
-                    if(ix == 0 && skipFirstRow) {
+                    if(!row || (ix == 0 && skipFirstRow)) {
                         return;
                     }
                     const vals = row.split(",")
@@ -188,10 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         errors.push("Accounting id already in use: " + newAccId)
                     }
                     if(!isValidId(newBankId)) {
-                        errors.push("Invalid Bank ID. Must use characters A-Z 0-9 " + newBankId)
+                        errors.push("Invalid Bank ID. Must use characters A-Z 0-9: " + newBankId)
                     }
                     if(!isValidId(newAccId)) {
-                        errors.push("Invalid Accounting ID. Must use characters A-Z 0-9 " + newBankId)
+                        errors.push("Invalid Accounting ID. Must use characters A-Z 0-9: " + newAccId)
                     }
                     newRows.push([newBankId, newAccId])
                 });
