@@ -3,6 +3,22 @@ const log = (msg) => {
     console.log("HCE: " + msg);
 }
 
+async function validateExtensionVersion() {
+    const url = "https://raw.githubusercontent.com/stricoff92/chase-to-csv-extension/master/manifest.json"
+    const resp = await fetch(url);
+    const repoManifest = await resp.json();
+    var localManifest = chrome.runtime.getManifest();
+    return parseFloat(repoManifest.version) <= parseFloat(localManifest.version);
+}
+
+function setUpdateStatusNotice(msg) {
+    const updateStatus = document.querySelector(
+        "#extension-update-status-container"
+    );
+    updateStatus.classList.remove("hidden");
+    updateStatus.innerText = msg;
+}
+
 function setPopupOnPage() {
     const notFound = document.querySelector("#page-not-found-container");
     notFound.classList.add("hidden");
@@ -77,6 +93,21 @@ function getDefaultStartEndDate(isoDate) {
 const REQUIRED_CSV_COLUMNS = ['account', 'memo', 'dr', 'cr'];
 
 document.addEventListener("DOMContentLoaded", async () => {
+
+    let versionOk;
+    try {
+        versionOk = await validateExtensionVersion();
+    } catch(err) {
+        setUpdateStatusNotice(
+            "ERROR: Could not verify extension version."
+        )
+    }
+    if(versionOk === false) {
+        setUpdateStatusNotice(
+            "A new version is available. Please update."
+        )
+    }
+
     await new Promise(resolve => {
         chrome.tabs.query({url: ["https://*.chase.com/*"]}, (tabs) => {
             if(tabs.length == 0) {
