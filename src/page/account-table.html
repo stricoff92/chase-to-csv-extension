@@ -24,6 +24,7 @@
             }
             .form-row {
                 margin-bottom: 0.5rem;
+                font-size: 1.2rem;
             }
             #add-row-btn {
                 font-size: 120%;
@@ -53,12 +54,15 @@
                 font-weight: bold;
             }
             #action-links-container {
-                max-width: 250px;
+                max-width: 450px;
                 margin-bottom: 0.25rem;
             }
             #delete-lookup-anchor {
                 color: #f00;
-                margin-left: 2rem;
+                margin-left: 10px;
+            }
+            .action-link {
+                font-size: 1.2rem;
             }
         </style>
         <script src="/src/page/account-table.js">
@@ -91,7 +95,7 @@
             </div>
             <div id="import-csv-container">
                 <h2>Import CSV<hr></h2>
-                <p>Importing will fail if duplicates are found.</p>
+                <p style="font-size:1.1rem;">Importing will fail if<br>duplicates are found.</p>
                 <div class="form-row">
                     <input
                         type="file"
@@ -104,7 +108,7 @@
                     <input id="skip-first-row-input" type="checkbox">
                 </div>
                 <div class="form-row">
-                    <button id="import-csv-btn">
+                    <button id="import-csv-btn" style="font-size:1.3rem;">
                         Import
                     </button>
                 </div>
@@ -118,8 +122,8 @@
             </div>
         </div>
         <div id="action-links-container">
-            <a href="#" id="export-to-csv-anchor">Export to CSV</a>
-            <a href="#" id="delete-lookup-anchor">DELETE ALL ROWS</a>
+            <a href="#" class="action-link" id="export-to-csv-anchor">Export to CSV</a>
+            <a href="#" class="action-link" id="delete-lookup-anchor">DELETE ALL ROWS</a>
         </div>
         <div id="table-container">
         </div>

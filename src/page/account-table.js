@@ -38,7 +38,8 @@ async function drawTable(parent) {
 
                 const td3 = document.createElement("td");
                 const btn = document.createElement("button");
-                btn.innerText = "delete"
+                btn.innerText = "DELETE";
+                btn.style.fontSize = "1rem";
                 btn.addEventListener("click", ()=>{
                     deleteRow(data[i][0]);
                 })
