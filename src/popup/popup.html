@@ -22,6 +22,34 @@
             a {
                 color: white;
             }
+            #popup-heading {
+                font-size: 2.1rem;
+                font-weight: bold;
+                text-align: center;
+                font-family: Garamond;
+            }
+            .page-link {
+                font-size: 1rem;
+                margin-right: 6px;
+            }
+            #page-not-found-container {
+                font-size: 1.5rem;
+                font-weight: bold;
+            }
+            #reset-on-page-btn {
+                font-size: 1.3rem;
+                font-weight: bold;
+            }
+            #start-crawl-section-heading {
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-top: 0.8rem;
+                margin-bottom: 0.8rem;
+            }
+            #show-advanced-options-anchor {
+                font-size: 1.3rem;
+                font-style: italic;
+            }
             td {
                 padding-right:0.5rem;
                 font-size: 1.25rem;
@@ -33,18 +61,25 @@
                 border:1px solid #ffac39;
                 padding:0.3rem;
             }
+            #extension-update-status-container {
+                border: 1px solid #ff0;
+                padding:0.3rem;
+                font-weight: bold;
+                font-size: 1.5rem;
+                color: #ff0;
+            }
             .form-row {
                 margin: 0.5rem;
             }
             .form-label {
                 font-style: italic;
-                font-size: 1rem;
+                font-size: 1.2rem;
                 color: #ffac39;
                 font-weight: bold;
             }
             .form-label-large {
                 font-style: italic;
-                font-size: 1.25rem;
+                font-size: 1.4rem;
                 color: #ffac39;
                 font-weight: bold;
             }
@@ -151,18 +186,32 @@
         </script>
     </head>
     <body>
-        <h1>
-            Chase / Accounting
-        </h1>
+        <div id="popup-heading">
+            Bank to CSV
+        </div>
         <div class="popup-container">
-            <a id="view-accounts-anchor" href="#">View Accounts</a>
-            <a id="compare-csvs-anchor" href="#">Compare CSVs</a>
+            <a
+                class="page-link"
+                id="view-accounts-anchor"
+                href="#"
+            >
+                View Accounts
+            </a>
+            <a
+                class="page-link"
+                id="compare-csvs-anchor"
+                href="#"
+            >
+                Compare CSVs
+            </a>
         </div>
         <div id="reset-btn-container" class="popup-container hidden">
             <button id="reset-on-page-btn">Reset</button>
         </div>
         <div id="page-not-found-container" class="popup-container hidden">
-            <h3>Not on Account Page</h3>
+            Not on Account Page
+        </div>
+        <div id="extension-update-status-container" class="popup-container hidden">
         </div>
         <div id="page-found-container" class="popup-container hidden">
             <div style="display:flex; justify-content:space-between; margin-bottom: 1rem;">
@@ -171,7 +220,9 @@
                 </button>
             </div>
             <hr>
-            <h2>Start Bank Data Extraction</h2>
+            <div id="start-crawl-section-heading">
+                Start Bank Data Extraction
+            </div>
 
             <div id="last-run-data-container">
                 <div id="table-title-container">

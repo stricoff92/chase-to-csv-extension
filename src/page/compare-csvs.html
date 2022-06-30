@@ -16,7 +16,7 @@
                 padding:1rem;
             }
             .form-row {
-                margin-bottom: 0.6rem;
+                margin-bottom: 0.8rem;
             }
             #form-error-area {
                 display: none;
@@ -48,6 +48,13 @@
             td {
                 text-align: right;
             }
+            input {
+                font-size: 1.2rem;
+            }
+            #compare-csvs-btn {
+                font-size: 1.2rem;
+                font-weight: bold;
+            }
         </style>
         <script src="/src/page/compare-csvs-data-builder.js">
         </script>
@@ -55,10 +62,14 @@
         </script>
         <script src="/src/page/compare-csvs.js">
         </script>
+        <!-- SORTABLE -->
+        <script src="/src/static/sortable/sortable.js">
+        </script>
+        <link rel="stylesheet" href="/src/static/sortable/sortable-theme-light.css">
+
     </head>
     <body>
         <h1 style="margin-top:0px;">Compare Transaction CSVs</h1>
-        <hr>
         <div id="data-entry-form">
             <div id="form-error-area">
             </div>

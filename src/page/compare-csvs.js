@@ -136,11 +136,16 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle.style.fontSize = "1.2rem";
 
             let dataTable = document.createElement("table");
+
+            dataTable.classList.add("sortable-theme-light");
+            dataTable.setAttribute("data-sortable", "");
+
             dataTable.style.display = "none";
             tableTitle.addEventListener("click", () => {
                 dataTable.style.display = dataTable.style.display == "none" ? "block" : "none";
             });
 
+            let thead = document.createElement("thead");
             let titleRow = document.createElement("tr");
             tableData.columns.forEach(heading => {
                 let th = document.createElement("th");
@@ -154,23 +159,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 th.innerText = heading;
                 titleRow.append(th);
             });
-            dataTable.append(titleRow);
+            thead.append(titleRow)
+            dataTable.append(thead);
 
+            function spanToDataValue(span) {
+                const text = span.innerText;
+                if(/^\$\s*-?\d/.test(text)) {
+                    return text.replace(/(\$|\s|\,)/g, "");
+                }
+                else if (/\%$/.test(text)) {
+                    return text.replace(/(\%|\s|\,)/g, "");
+                } else {
+                    return text;
+                }
+            }
+            let tbody = document.createElement("tbody");
             tableData.rows.forEach(rowSpans => {
                 let tr = document.createElement("tr");
                 rowSpans.forEach(span => {
                     let td = document.createElement("td");
                     td.append(span);
+                    td.setAttribute("data-value", spanToDataValue(span))
                     tr.append(td);
                 });
-                dataTable.append(tr);
+                tbody.append(tr)
             });
+            dataTable.append(tbody);
 
             tableContainer.append(tableTitle);
             tableContainer.append(dataTable);
             tablesContainer.append(tableContainer);
         }
-
+        // All tables must be drawn before calling init()
+        Sortable.init();
 
         // Add final click handlers
         document.getElementById("show-all-anchor").addEventListener('click', () => {

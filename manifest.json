@@ -7,7 +7,8 @@
     "service_worker": "src/background.js"
   },
   "host_permissions": [
-    "https://*.chase.com/*"
+    "https://*.chase.com/*",
+    "https://raw.githubusercontent.com/stricoff92/chase-to-csv-extension/master/manifest.json"
   ],
   "permissions": [
     "activeTab",
