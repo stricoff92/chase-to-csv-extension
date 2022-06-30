@@ -32,9 +32,7 @@
         if (options.selector == null) {
           options.selector = SELECTOR;
         }
-        console.log({selector: options.selector})
         tables = document.querySelectorAll(options.selector);
-        console.log({tables})
         _results = [];
         for (_i = 0, _len = tables.length; _i < _len; _i++) {
           table = tables[_i];
@@ -43,7 +41,6 @@
         return _results;
       },
       initTable: function(table) {
-        console.log("initTable()")
         var i, th, ths, _i, _len, _ref;
         if (((_ref = table.tHead) != null ? _ref.rows.length : void 0) !== 1) {
           return;
@@ -55,7 +52,6 @@
         ths = table.querySelectorAll('th');
         for (i = _i = 0, _len = ths.length; _i < _len; i = ++_i) {
           th = ths[i];
-          console.log({test: th.getAttribute('data-sortable')})
           if (th.getAttribute('data-sortable') !== 'false') {
             sortable.setupClickableTH(table, th, i);
           }
@@ -63,7 +59,6 @@
         return table;
       },
       setupClickableTH: function(table, th, i) {
-        console.log("setupClickableTH")
         var eventName, onClick, type, _i, _len, _results;
         type = sortable.getColumnType(table, i);
         onClick = function(e) {

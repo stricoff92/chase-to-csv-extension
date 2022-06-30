@@ -2,18 +2,18 @@
 
 
 async function drawTable(parent) {
-    table = document.createElement("table");
+    const table = document.createElement("table");
     table.classList.add("sortable-theme-light");
     table.setAttribute("data-sortable", "");
 
     // Assemble heading
-    thead = document.createElement("thead");
-    header = document.createElement("tr");
-    heading1 = document.createElement("th");
+    const thead = document.createElement("thead");
+    const header = document.createElement("tr");
+    const heading1 = document.createElement("th");
     heading1.innerText = "BANK-ID";
-    heading2 = document.createElement("th");
+    const heading2 = document.createElement("th");
     heading2.innerText = "ACC-ID";
-    heading3 = document.createElement("th");
+    const heading3 = document.createElement("th");
     heading3.setAttribute("data-sortable", "false");
     header.append(heading1);
     header.append(heading2);
@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         throw new Error("Could not find parent element");
     }
     await drawTable(parent);
+    // All tables must be drawn before calling init()
     Sortable.init();
 
     // Updadate data usage
