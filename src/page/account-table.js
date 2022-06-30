@@ -1,43 +1,55 @@
 
 
 
-function drawTable(parent) {
+async function drawTable(parent) {
     table = document.createElement("table");
+    table.classList.add("sortable-theme-light");
+    table.setAttribute("data-sortable", "");
 
     // Assemble heading
+    thead = document.createElement("thead");
     header = document.createElement("tr");
     heading1 = document.createElement("th");
     heading1.innerText = "BANK-ID";
     heading2 = document.createElement("th");
     heading2.innerText = "ACC-ID";
     heading3 = document.createElement("th");
+    heading3.setAttribute("data-sortable", "false");
     header.append(heading1);
     header.append(heading2);
     header.append(heading3);
-    table.append(header);
+    thead.append(header)
+    table.append(thead);
 
-    chrome.storage.local.get(['data'], (results) => {
-        const data = results.data || [];
-        for(let i=0; i<data.length; i++) {
-            const tr = document.createElement("tr");
-            const td1 = document.createElement("td");
-            const td2 = document.createElement("td");
-            td1.innerText = data[i][0];
-            td2.innerText = data[i][1];
-            tr.append(td1);
-            tr.append(td2);
+    return await new Promise(resolve => {
+        chrome.storage.local.get(['data'], (results) => {
+            const data = results.data || [];
+            const tbody = document.createElement("tbody");
+            for(let i=0; i<data.length; i++) {
+                const tr = document.createElement("tr");
+                const td1 = document.createElement("td");
+                const td2 = document.createElement("td");
+                td1.innerText = data[i][0];
+                td2.innerText = data[i][1];
+                td1.setAttribute("data-value", data[i][0])
+                td2.setAttribute("data-value", data[i][1])
+                tr.append(td1);
+                tr.append(td2);
 
-            const td3 = document.createElement("td");
-            const btn = document.createElement("button");
-            btn.innerText = "delete"
-            btn.addEventListener("click", ()=>{
-                deleteRow(data[i][0]);
-            })
-            td3.append(btn);
-            tr.append(td3);
-            table.append(tr);
-        }
-        parent.append(table);
+                const td3 = document.createElement("td");
+                const btn = document.createElement("button");
+                btn.innerText = "delete"
+                btn.addEventListener("click", ()=>{
+                    deleteRow(data[i][0]);
+                })
+                td3.append(btn);
+                tr.append(td3);
+                tbody.append(tr);
+            }
+            table.append(tbody);
+            parent.append(table);
+            resolve();
+        });
     });
 }
 
@@ -88,14 +100,15 @@ function drawErrors(errors) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
     // Draw table.
     const parent = document.getElementById("table-container");
     if(!parent) {
         throw new Error("Could not find parent element");
     }
-    drawTable(parent);
+    await drawTable(parent);
+    Sortable.init();
 
     // Updadate data usage
     chrome.storage.local.getBytesInUse((usage) =>{
