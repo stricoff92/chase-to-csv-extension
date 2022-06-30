@@ -100,12 +100,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch(err) {
         setUpdateStatusNotice(
             "ERROR: Could not verify extension version."
-        )
+        );
     }
     if(versionOk === false) {
         setUpdateStatusNotice(
             "A new version is available. Please update."
-        )
+        );
     }
 
     await new Promise(resolve => {
