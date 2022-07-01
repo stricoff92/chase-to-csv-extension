@@ -11,6 +11,12 @@ async function validateExtensionVersion() {
     return parseFloat(repoManifest.version) <= parseFloat(localManifest.version);
 }
 
+function validateChromeVersion() {
+    const version = /Chrome\/([0-9.]+)/.exec(navigator.userAgent)[1];
+    const majorVersion = parseInt(version.split(".")[0]);
+    return majorVersion >= 97;
+}
+
 function setUpdateStatusNotice(msg) {
     const updateStatus = document.querySelector(
         "#extension-update-status-container"
@@ -104,7 +110,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if(versionOk === false) {
         setUpdateStatusNotice(
-            "A new version is available. Please update."
+            "A new extension version is available. Please update."
+        );
+    }
+    try {
+        versionOk = validateChromeVersion();
+    } catch(err) {
+        setUpdateStatusNotice(
+            "ERROR: Could not verify chrome version."
+        );
+    }
+    if(versionOk === false) {
+        setUpdateStatusNotice(
+            "A new Chrome version is available. Please update."
         );
     }
 
@@ -112,7 +130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.tabs.query({url: ["https://*.chase.com/*"]}, (tabs) => {
             if(tabs.length == 0) {
                 setPopupOffPage();
-                chrome.storage.local.set({onPage:false}, ()=>{
+                chrome.storage.local.set({onPage:false, running:false}, ()=>{
                     resolve();
                 });
             } else {
@@ -122,7 +140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
-        chrome.storage.local.set({onPage:false});
+        chrome.storage.local.set({onPage:false, running:false});
         setPopupOffPage();
     });
 
@@ -245,6 +263,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         chrome.tabs.query(tabQueryParams, (tabs) => {
             if(tabs.length == 0) {
+                alert("Not on chase website. Could not start health check.")
                 return;
             }
             chrome.tabs.sendMessage(
@@ -397,6 +416,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         chrome.tabs.query(tabQueryParams, (tabs) => {
             if(tabs.length == 0) {
+                errorArea.innerHTML = "Current tab is not chase website. Please navigate to website.";
+                errorArea.classList.remove("hidden");
                 return;
             }
             const payload = {
