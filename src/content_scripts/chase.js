@@ -92,13 +92,13 @@ const elementSelectors = new Map([
         "accountNumber",
         ".account-number",
     ]
-])
+]);
 
 const getElementSelector = (name) => {
     if (elementSelectors.has(name)) {
         return elementSelectors.get(name);
     }
-    throw new Error("Unknown element selector")
+    throw new Error("Unknown element selector");
 }
 
 window.addEventListener("load", main, false);
@@ -108,7 +108,7 @@ function main () {
     const timedOutCallbackTimer = setTimeout(()=>{
         log("timed out");
         timedOut = true;
-    }, 20000)
+    }, 20000);
 
     let onPage = false;
 
@@ -273,6 +273,10 @@ async function waitForElement(selector) {
     })
 }
 
+function getAccountTableFromContainer(tableContainer) {
+    return tableContainer.shadowRoot.querySelector('table');
+}
+
 async function scrapeData(scrapeKwargs) {
     log("scrapeData running, checking storage for running flag")
     const running = await getRunning();
@@ -296,7 +300,7 @@ async function scrapeData(scrapeKwargs) {
     }
 
     // Loop through account rows (behind shadow root)
-    const table = tableContainer.shadowRoot.querySelector('table');
+    const table = getAccountTableFromContainer(tableContainer);
     const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
     log("searching " + tableRows.length + " rows for unclicked links")
     for(let i=0; i< tableRows.length && i < scrapeKwargs.maxAccounts; i++) {
@@ -791,7 +795,7 @@ async function selectAccountTable() {
             let table;
             try {
                 const tableContainer = document.querySelector(getElementSelector("tableContainer"));
-                table = tableContainer.shadowRoot.querySelector('table');
+                table = getAccountTableFromContainer(tableContainer);
             } catch (err) {
                 return setTimeout(inner, 25);
             }
@@ -814,7 +818,7 @@ const TESTS = [
             if(!tableContainer) {
                 return "could not find container accountsTableAG1Table0"
             }
-            const table = tableContainer.shadowRoot.querySelector('table');
+            const table = getAccountTableFromContainer(tableContainer);
             if(!table) {
                 return "could not find nested table"
             }
@@ -825,10 +829,10 @@ const TESTS = [
         },
     },
     {
-        name:"Account table column has findable link to transaction table",
+        name:"Account table column has anchor link",
         cb: async function() {
             const table = await selectAccountTable();
-            const tableRows = table.querySelectorAll("tr");
+            const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
             const row = tableRows[4];
             const headerCol = row.querySelector(getElementSelector("accountsTableRowHeader"));
             if(!headerCol) {
@@ -836,7 +840,10 @@ const TESTS = [
             }
             const anchor = headerCol.querySelector("a")
             if(!anchor) {
-                return "could not find clickable link"
+                return "could not find clickable link";
+            }
+            if(!/^.*\s\(\.{3}\d{4}\)$/.test(anchor.innerText)) {
+                return "found unexpected sub account link text";
             }
         },
     },
@@ -845,7 +852,7 @@ const TESTS = [
         cb: async function() {
             const tableHash = location.hash;
             const table = await selectAccountTable();
-            const tableRows = table.querySelectorAll("tr");
+            const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
             const anchor = tableRows[4].querySelector("th").querySelector("a");
             anchor.click();
             return new Promise((resolve) => {
@@ -917,6 +924,8 @@ const TESTS = [
                         setTimeout(inner, 100);
                         return;
                     }
+                    // Loading element doesnt always appear, if transaction table is selectable
+                    // consider this test passed.
                     const loaderElem = document.querySelector(
                         getElementSelector("transactionTableLoader")
                     ) || document.querySelector(getElementSelector("transactionTable"));
@@ -939,7 +948,7 @@ const TESTS = [
         },
     },
     {
-        name: "Can select 5+ transaction table rows",
+        name: "Can select transaction table rows",
         cb: async function() {
             let errMsg = await new Promise((resolve) => {
                 let attemptNumber = 0
@@ -962,6 +971,12 @@ const TESTS = [
                         setTimeout(inner, 100);
                         return;
                     }
+                    else if(rows[0].classList[0] !== 'column-headers') {
+                        return resolve("expected first row to have column-heders class");
+                    }
+                    else if (rows[1].querySelectorAll("td").length < 4) {
+                        return resolve("could not find table TD cells");
+                    }
                     clickAccountsButton();
                     setTimeout(resolve);
                     return;
@@ -978,7 +993,7 @@ const TESTS = [
         name: "Can select 'see more transactions' link to load more transactions.",
         cb: async function() {
             const acctable = await selectAccountTable();
-            const tableRows = acctable.querySelectorAll("tr");
+            const tableRows = acctable.querySelectorAll(getElementSelector("accountsTableRow"));
             const anchor = tableRows[1].querySelector("th").querySelector("a");
             anchor.click();
             let errMsg = await new Promise((resolve) => {
@@ -1071,6 +1086,9 @@ const TESTS = [
                 }
                 if(!amountTd.innerText) {
                     continue;
+                }
+                if(!/\-?\$[\d|\,]+\.\d{2}$/.test(amountTd.innerText)) {
+                    return "unexpected currency format";
                 }
                 const amountCents = parseChaseAmountStringToCents(amountTd.innerText);
                 if(amountCents > 1 || amountCents < -1) {
