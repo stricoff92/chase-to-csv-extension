@@ -108,7 +108,7 @@ function main () {
     const timedOutCallbackTimer = setTimeout(()=>{
         log("timed out");
         timedOut = true;
-    }, 12000)
+    }, 20000)
 
     let onPage = false;
 
@@ -125,7 +125,7 @@ function main () {
         }
     }
 
-    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse)=> {
+    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
          if (request.event === "scrapeStarted") {
             console.log("received event to start scraping");
             console.log(request);
@@ -154,7 +154,7 @@ function main () {
                                 lookup,
                                 linksClicked: [],
                                 results: [],
-                                notices: [],
+                                notices: [`INFO Scrape Started, KWARGS ${JSON.stringify(request)}`],
                             }
                         );
                     }, 250);
@@ -197,8 +197,9 @@ function confirmIfFalsy(value, message) {
 }
 
 function clickSeeAllAccountsLinkIfItsThere() {
-    const element = document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
-);
+    const element = document.querySelector(
+        getElementSelector("viewMoreAccountsLinkContainer")
+    );
     if(!element) {
         log("could not find link to view all accounts");
         return;
@@ -285,12 +286,12 @@ async function scrapeData(scrapeKwargs) {
     const tableContainer = await waitForElement(getElementSelector("tableContainer"))
 
     // Wait until table is fully expanded.
-    clickSeeAllAccountsLinkIfItsThere();
     if(canViewMoreAccounts()){
-        log("waiting for full account list")
+        log("waiting for full account list");
+        clickSeeAllAccountsLinkIfItsThere();
         setTimeout(()=>{
             scrapeData(scrapeKwargs);
-        }, 100);
+        }, 25);
         return;
     }
 
@@ -338,7 +339,7 @@ async function scrapeData(scrapeKwargs) {
         }
 
         // Navigate to the account page
-        log("checking row " + rowHeaderText);
+        log("clicking account link" + rowHeaderText);
         scrapeKwargs.linksClicked.push(rowHeaderText);
         tr.querySelector("a").click();
 
@@ -348,20 +349,17 @@ async function scrapeData(scrapeKwargs) {
             const chaseId = await getChaseAccountNumberFromModalAndClose();
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
-                log("Could not find bank account id in URL, skipping.")
-                scrapeKwargs.notices.push(
-                    "WARNING: could not get chase account ID from URL for link: " + rowHeaderText
+                alert(
+                    "ERROR: could not get chase account ID from webpage: " + rowHeaderText
                 );
-                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
-                setTimeout(() => {
-                    scrapeData(scrapeKwargs);
-                });
                 return;
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
-                scrapeKwargs.notices.push("INFO Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
-                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
+                scrapeKwargs.notices.push(
+                    `WARNING skipping CHASE account ${rowHeaderText} (${chaseId}) no ACCOUNTING ID found`
+                );
+                clickAccountsButton();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
                 });
@@ -369,7 +367,9 @@ async function scrapeData(scrapeKwargs) {
             }
             const accountingId = scrapeKwargs.lookup.get(chaseId);
             log("row has associated ACC account " + accountingId);
-            scrapeKwargs.notices.push("INFO Scraping CHASE account " + chaseId + " matching id: " + accountingId);
+            scrapeKwargs.notices.push(
+                `INFO Scraping CHASE account ${rowHeaderText} (${chaseId}) matching id: ${accountingId}`
+            );
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
             });
@@ -559,7 +559,7 @@ async function scrapeTransactionData(scrapeKwargs) {
     delete scrapeKwargs.chaseId;
 
     // Go back to accounts list
-    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
+    clickAccountsButton();
     setTimeout(()=>{
         scrapeData(scrapeKwargs);
     });
