@@ -11,6 +11,12 @@ async function validateExtensionVersion() {
     return parseFloat(repoManifest.version) <= parseFloat(localManifest.version);
 }
 
+function validateChromeVersion() {
+    const version = /Chrome\/([0-9.]+)/.exec(navigator.userAgent)[1];
+    const majorVersion = parseInt(version.split(".")[0]);
+    return majorVersion >= 97;
+}
+
 function setUpdateStatusNotice(msg) {
     const updateStatus = document.querySelector(
         "#extension-update-status-container"
@@ -63,9 +69,7 @@ function updateDebugMessage(msg) {
 }
 
 function getDefaultStartEndDate(isoDate) {
-    // .map(parseInt); results in NaN values, not sure why.
     const [yearInt, monthInt, _dayInt] = isoDate.split("-").map(v=> parseInt(v));
-
     const prevMonthInt = monthInt == 1 ? 12 : monthInt - 1;
     const prevYearInt = prevMonthInt != 12 ? yearInt : yearInt - 1;
     let prevDayStart = 1;
@@ -104,7 +108,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if(versionOk === false) {
         setUpdateStatusNotice(
-            "A new version is available. Please update."
+            "A new extension version is available. Please update."
+        );
+    }
+    try {
+        versionOk = validateChromeVersion();
+    } catch(err) {
+        setUpdateStatusNotice(
+            "ERROR: Could not verify chrome version."
+        );
+    }
+    if(versionOk === false) {
+        setUpdateStatusNotice(
+            "A new Chrome version is available. Please update."
         );
     }
 
@@ -112,7 +128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.tabs.query({url: ["https://*.chase.com/*"]}, (tabs) => {
             if(tabs.length == 0) {
                 setPopupOffPage();
-                chrome.storage.local.set({onPage:false}, ()=>{
+                chrome.storage.local.set({onPage:false, running:false}, ()=>{
                     resolve();
                 });
             } else {
@@ -122,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.querySelector("#reset-on-page-btn").addEventListener("click", ()=>{
-        chrome.storage.local.set({onPage:false});
+        chrome.storage.local.set({onPage:false, running:false});
         setPopupOffPage();
     });
 
@@ -228,12 +244,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const detaultDates = getDefaultStartEndDate(
         (new Date()).toISOString().slice(0, 10)
     );
-    document.getElementById("new-scrape-start-date-input").value = (
-        detaultDates.start
-    );
-    document.getElementById("new-scrape-end-date-input").value = (
-        detaultDates.end
-    );
+    if(detaultDates.start && detaultDates.end) {
+        document.getElementById("new-scrape-start-date-input").value = (
+            detaultDates.start
+        );
+        document.getElementById("new-scrape-end-date-input").value = (
+            detaultDates.end
+        );
+    }
 
     document.getElementById("start-health-check-btn").addEventListener("click", () => {
         const tabQueryParams = {
@@ -245,6 +263,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         chrome.tabs.query(tabQueryParams, (tabs) => {
             if(tabs.length == 0) {
+                alert("Not on chase website. Could not start health check.")
                 return;
             }
             chrome.tabs.sendMessage(
@@ -397,6 +416,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         chrome.tabs.query(tabQueryParams, (tabs) => {
             if(tabs.length == 0) {
+                errorArea.innerHTML = "Current tab is not chase website. Please navigate to website.";
+                errorArea.classList.remove("hidden");
                 return;
             }
             const payload = {

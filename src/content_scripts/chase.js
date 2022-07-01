@@ -92,13 +92,13 @@ const elementSelectors = new Map([
         "accountNumber",
         ".account-number",
     ]
-])
+]);
 
 const getElementSelector = (name) => {
     if (elementSelectors.has(name)) {
         return elementSelectors.get(name);
     }
-    throw new Error("Unknown element selector")
+    throw new Error("Unknown element selector");
 }
 
 window.addEventListener("load", main, false);
@@ -108,7 +108,7 @@ function main () {
     const timedOutCallbackTimer = setTimeout(()=>{
         log("timed out");
         timedOut = true;
-    }, 12000)
+    }, 20000);
 
     let onPage = false;
 
@@ -125,7 +125,7 @@ function main () {
         }
     }
 
-    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse)=> {
+    chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
          if (request.event === "scrapeStarted") {
             console.log("received event to start scraping");
             console.log(request);
@@ -154,7 +154,7 @@ function main () {
                                 lookup,
                                 linksClicked: [],
                                 results: [],
-                                notices: [],
+                                notices: [`INFO Scrape Started, KWARGS ${JSON.stringify(request)}`],
                             }
                         );
                     }, 250);
@@ -197,14 +197,19 @@ function confirmIfFalsy(value, message) {
 }
 
 function clickSeeAllAccountsLinkIfItsThere() {
-    const element = document.querySelector(getElementSelector("viewMoreAccountsLinkContainer")
-);
+    const element = document.querySelector(
+        getElementSelector("viewMoreAccountsLinkContainer")
+    );
     if(!element) {
         log("could not find link to view all accounts");
         return;
     }
     log("clicking see all accounts link");
     element.click();
+}
+
+function scrollToBottom() {
+    window.scrollTo(0, document.body.scrollHeight);
 }
 
 function canViewMoreAccounts() {
@@ -272,6 +277,10 @@ async function waitForElement(selector) {
     })
 }
 
+function getAccountTableFromContainer(tableContainer) {
+    return tableContainer.shadowRoot.querySelector('table');
+}
+
 async function scrapeData(scrapeKwargs) {
     log("scrapeData running, checking storage for running flag")
     const running = await getRunning();
@@ -285,17 +294,17 @@ async function scrapeData(scrapeKwargs) {
     const tableContainer = await waitForElement(getElementSelector("tableContainer"))
 
     // Wait until table is fully expanded.
-    clickSeeAllAccountsLinkIfItsThere();
     if(canViewMoreAccounts()){
-        log("waiting for full account list")
+        log("waiting for full account list");
+        clickSeeAllAccountsLinkIfItsThere();
         setTimeout(()=>{
             scrapeData(scrapeKwargs);
-        }, 100);
+        }, 25);
         return;
     }
 
     // Loop through account rows (behind shadow root)
-    const table = tableContainer.shadowRoot.querySelector('table');
+    const table = getAccountTableFromContainer(tableContainer);
     const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
     log("searching " + tableRows.length + " rows for unclicked links")
     for(let i=0; i< tableRows.length && i < scrapeKwargs.maxAccounts; i++) {
@@ -338,7 +347,7 @@ async function scrapeData(scrapeKwargs) {
         }
 
         // Navigate to the account page
-        log("checking row " + rowHeaderText);
+        log("clicking account link " + rowHeaderText);
         scrapeKwargs.linksClicked.push(rowHeaderText);
         tr.querySelector("a").click();
 
@@ -348,20 +357,17 @@ async function scrapeData(scrapeKwargs) {
             const chaseId = await getChaseAccountNumberFromModalAndClose();
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
-                log("Could not find bank account id in URL, skipping.")
-                scrapeKwargs.notices.push(
-                    "WARNING: could not get chase account ID from URL for link: " + rowHeaderText
+                alert(
+                    "ERROR: could not get chase account ID from webpage: " + rowHeaderText
                 );
-                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
-                setTimeout(() => {
-                    scrapeData(scrapeKwargs);
-                });
                 return;
             }
             if(!scrapeKwargs.lookup.has(chaseId)) {
                 log("no ACCOUNTING ID found for this account");
-                scrapeKwargs.notices.push("INFO Skipping CHASE account " + chaseId + " no ACCOUNTING ID found")
-                document.querySelector(getElementSelector("viewAllAccountsLink")).click();
+                scrapeKwargs.notices.push(
+                    `WARNING skipping CHASE account ${rowHeaderText} (${chaseId}) no ACCOUNTING ID found`
+                );
+                clickAccountsButton();
                 setTimeout(() => {
                     scrapeData(scrapeKwargs);
                 });
@@ -369,9 +375,11 @@ async function scrapeData(scrapeKwargs) {
             }
             const accountingId = scrapeKwargs.lookup.get(chaseId);
             log("row has associated ACC account " + accountingId);
-            scrapeKwargs.notices.push("INFO Scraping CHASE account " + chaseId + " matching id: " + accountingId);
+            scrapeKwargs.notices.push(
+                `INFO Scraping CHASE account ${rowHeaderText} (${chaseId}) matching id: ${accountingId}`
+            );
             setTimeout(()=> {
-                scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
+                scrapeTransactionData({...scrapeKwargs, accountingId, chaseId}, rowHeaderText);
             });
         }, 200);
         return;
@@ -419,21 +427,19 @@ function parseChaseAmountStringToCents(amountString) {
     }
     return Math.round(parseFloat(amountString.replace(/[^\-0-9]/g, "")));
 }
-async function scrapeTransactionData(scrapeKwargs) {
 
-    const accountLinkHeader = scrapeKwargs.linksClicked[scrapeKwargs.linksClicked.length - 1];
-    const lastName = accountLinkHeader.split(" ")[0];
 
+async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
     // Check for any takeovers
     const continueWithActivity = document.querySelector(
         getElementSelector("continueWithActivityBtn")
     );
     if(continueWithActivity) {
         log("clicking continue with activity button");
-        scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
+        scrapeKwargs.notices.push("WARNING: clicking 'continue with activity' button");
         continueWithActivity.click();
         setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs);
+            scrapeTransactionData(scrapeKwargs, rowHeaderText);
         });
         return;
     }
@@ -447,10 +453,11 @@ async function scrapeTransactionData(scrapeKwargs) {
         getElementSelector("transactionTableLoader")
     );
     if(loaderElem) {
-        log("DEBUG: found loader element, waiting..");
+        log("found transactions loading element, waiting..");
+        scrollToBottom();
         setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs);
-        }, 120);
+            scrapeTransactionData(scrapeKwargs, rowHeaderText);
+        }, 50);
         return;
     }
 
@@ -462,7 +469,19 @@ async function scrapeTransactionData(scrapeKwargs) {
     //  - OR the see more activity button no longer appears.
     const rows = table.querySelectorAll("tr");
     if(rows.length < 2) {
-        return
+        scrapeKwargs.notices.push(
+            "WARNING skipping sub account, no transaction rows found."
+        );
+        clickAccountsButton();
+        setTimeout(()=>{
+            scrapeData(scrapeKwargs);
+        });
+        return;
+    } else {
+        if(rows[0].classList[0] !== 'column-headers') {
+            alert("ERROR: could not find transaction table heading row.")
+            return;
+        }
     }
     let oldestDate;
     for(let i=1; i<rows.length; i++) {
@@ -473,17 +492,30 @@ async function scrapeTransactionData(scrapeKwargs) {
             oldestDate = parseChaseDateString(rowDateStr);
         }
     }
-    if(oldestDate >= startDateObj) {
+    if(oldestDate && oldestDate >= startDateObj) {
         const seeMoreBtn = document.querySelector(
             getElementSelector("seeMoreTransactions")
         );
         if (seeMoreBtn) {
             seeMoreBtn.click();
             setTimeout(()=>{
-                scrapeTransactionData(scrapeKwargs);
+                scrapeTransactionData(scrapeKwargs, rowHeaderText);
             }, 50);
             return;
         }
+    }
+    else if(!oldestDate) {
+        scrapeKwargs.notices.push(
+            "WARNING could not find any transaction dates, skipping"
+        );
+        // Go back to accounts list
+        clickAccountsButton();
+        delete scrapeKwargs.accountingId;
+        delete scrapeKwargs.chaseId;
+        setTimeout(()=>{
+            scrapeData(scrapeKwargs);
+        });
+        return;
     }
 
     // Loop through and collect data
@@ -499,7 +531,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("WARNING skipping row due to bad date, on page " + accountLinkHeader);
+            scrapeKwargs.notices.push("WARNING skipping row due to unreadable date, " + rowHeaderText);
             continue;
         }
         log("parsing string " + dateStr)
@@ -523,7 +555,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         // Negative number results in DEBIT adj to plig
         // account (Expense account with debit balance).
         const amountCents = parseChaseAmountStringToCents(amountText);
-
+        const lastName = rowHeaderText.split(" ")[0];
         let csvRow;
         let csvPlugRow;
         const data = {
@@ -559,7 +591,7 @@ async function scrapeTransactionData(scrapeKwargs) {
     delete scrapeKwargs.chaseId;
 
     // Go back to accounts list
-    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
+    clickAccountsButton();
     setTimeout(()=>{
         scrapeData(scrapeKwargs);
     });
@@ -768,7 +800,7 @@ async function selectAccountTable() {
             let table;
             try {
                 const tableContainer = document.querySelector(getElementSelector("tableContainer"));
-                table = tableContainer.shadowRoot.querySelector('table');
+                table = getAccountTableFromContainer(tableContainer);
             } catch (err) {
                 return setTimeout(inner, 25);
             }
@@ -791,7 +823,7 @@ const TESTS = [
             if(!tableContainer) {
                 return "could not find container accountsTableAG1Table0"
             }
-            const table = tableContainer.shadowRoot.querySelector('table');
+            const table = getAccountTableFromContainer(tableContainer);
             if(!table) {
                 return "could not find nested table"
             }
@@ -802,10 +834,10 @@ const TESTS = [
         },
     },
     {
-        name:"Account table column has findable link to transaction table",
+        name:"Account table column has anchor link",
         cb: async function() {
             const table = await selectAccountTable();
-            const tableRows = table.querySelectorAll("tr");
+            const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
             const row = tableRows[4];
             const headerCol = row.querySelector(getElementSelector("accountsTableRowHeader"));
             if(!headerCol) {
@@ -813,7 +845,10 @@ const TESTS = [
             }
             const anchor = headerCol.querySelector("a")
             if(!anchor) {
-                return "could not find clickable link"
+                return "could not find clickable link";
+            }
+            if(!/^.*\s\(\.{3}\d{4}\)$/.test(anchor.innerText)) {
+                return "found unexpected sub account link text";
             }
         },
     },
@@ -822,7 +857,7 @@ const TESTS = [
         cb: async function() {
             const tableHash = location.hash;
             const table = await selectAccountTable();
-            const tableRows = table.querySelectorAll("tr");
+            const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
             const anchor = tableRows[4].querySelector("th").querySelector("a");
             anchor.click();
             return new Promise((resolve) => {
@@ -894,9 +929,11 @@ const TESTS = [
                         setTimeout(inner, 100);
                         return;
                     }
+                    // Loading element doesnt always appear, if transaction table is selectable
+                    // consider this test passed.
                     const loaderElem = document.querySelector(
                         getElementSelector("transactionTableLoader")
-                    ) ||  document.querySelector(getElementSelector("accountsTableRow"));
+                    ) || document.querySelector(getElementSelector("transactionTable"));
                     if(!loaderElem) {
                         attemptNumber++;
                         if(attemptNumber > 100) {
@@ -916,7 +953,7 @@ const TESTS = [
         },
     },
     {
-        name: "Can select 5+ transaction table rows",
+        name: "Can select transaction table rows",
         cb: async function() {
             let errMsg = await new Promise((resolve) => {
                 let attemptNumber = 0
@@ -939,6 +976,12 @@ const TESTS = [
                         setTimeout(inner, 100);
                         return;
                     }
+                    else if(rows[0].classList[0] !== 'column-headers') {
+                        return resolve("expected first row to have column-heders class");
+                    }
+                    else if (rows[1].querySelectorAll("td").length < 4) {
+                        return resolve("could not find table TD cells");
+                    }
                     clickAccountsButton();
                     setTimeout(resolve);
                     return;
@@ -955,7 +998,7 @@ const TESTS = [
         name: "Can select 'see more transactions' link to load more transactions.",
         cb: async function() {
             const acctable = await selectAccountTable();
-            const tableRows = acctable.querySelectorAll("tr");
+            const tableRows = acctable.querySelectorAll(getElementSelector("accountsTableRow"));
             const anchor = tableRows[1].querySelector("th").querySelector("a");
             anchor.click();
             let errMsg = await new Promise((resolve) => {
@@ -1048,6 +1091,9 @@ const TESTS = [
                 }
                 if(!amountTd.innerText) {
                     continue;
+                }
+                if(!/\-?\$[\d|\,]+\.\d{2}$/.test(amountTd.innerText)) {
+                    return "unexpected currency format";
                 }
                 const amountCents = parseChaseAmountStringToCents(amountTd.innerText);
                 if(amountCents > 1 || amountCents < -1) {
