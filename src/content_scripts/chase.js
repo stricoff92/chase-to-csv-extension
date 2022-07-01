@@ -339,7 +339,7 @@ async function scrapeData(scrapeKwargs) {
         }
 
         // Navigate to the account page
-        log("clicking account link" + rowHeaderText);
+        log("clicking account link " + rowHeaderText);
         scrapeKwargs.linksClicked.push(rowHeaderText);
         tr.querySelector("a").click();
 
@@ -371,7 +371,7 @@ async function scrapeData(scrapeKwargs) {
                 `INFO Scraping CHASE account ${rowHeaderText} (${chaseId}) matching id: ${accountingId}`
             );
             setTimeout(()=> {
-                scrapeTransactionData({...scrapeKwargs, accountingId, chaseId});
+                scrapeTransactionData({...scrapeKwargs, accountingId, chaseId}, rowHeaderText);
             });
         }, 200);
         return;
@@ -419,21 +419,19 @@ function parseChaseAmountStringToCents(amountString) {
     }
     return Math.round(parseFloat(amountString.replace(/[^\-0-9]/g, "")));
 }
-async function scrapeTransactionData(scrapeKwargs) {
 
-    const accountLinkHeader = scrapeKwargs.linksClicked[scrapeKwargs.linksClicked.length - 1];
-    const lastName = accountLinkHeader.split(" ")[0];
 
+async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
     // Check for any takeovers
     const continueWithActivity = document.querySelector(
         getElementSelector("continueWithActivityBtn")
     );
     if(continueWithActivity) {
         log("clicking continue with activity button");
-        scrapeKwargs.notices.push("DEBUG: pressing 'continue with activity' button");
+        scrapeKwargs.notices.push("WARNING: clicking 'continue with activity' button");
         continueWithActivity.click();
         setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs);
+            scrapeTransactionData(scrapeKwargs, rowHeaderText);
         });
         return;
     }
@@ -447,10 +445,10 @@ async function scrapeTransactionData(scrapeKwargs) {
         getElementSelector("transactionTableLoader")
     );
     if(loaderElem) {
-        log("DEBUG: found loader element, waiting..");
+        log("found transactions loading element, waiting..");
         setTimeout(()=>{
-            scrapeTransactionData(scrapeKwargs);
-        }, 120);
+            scrapeTransactionData(scrapeKwargs, rowHeaderText);
+        }, 50);
         return;
     }
 
@@ -462,7 +460,19 @@ async function scrapeTransactionData(scrapeKwargs) {
     //  - OR the see more activity button no longer appears.
     const rows = table.querySelectorAll("tr");
     if(rows.length < 2) {
-        return
+        scrapeKwargs.notices.push(
+            "WARNING skipping sub account, no transaction rows found."
+        );
+        clickAccountsButton();
+        setTimeout(()=>{
+            scrapeData(scrapeKwargs);
+        });
+        return;
+    } else {
+        if(rows[0].classList[0] !== 'column-headers') {
+            alert("ERROR: could not find transaction table heading row.")
+            return;
+        }
     }
     let oldestDate;
     for(let i=1; i<rows.length; i++) {
@@ -473,17 +483,30 @@ async function scrapeTransactionData(scrapeKwargs) {
             oldestDate = parseChaseDateString(rowDateStr);
         }
     }
-    if(oldestDate >= startDateObj) {
+    if(oldestDate && oldestDate >= startDateObj) {
         const seeMoreBtn = document.querySelector(
             getElementSelector("seeMoreTransactions")
         );
         if (seeMoreBtn) {
             seeMoreBtn.click();
             setTimeout(()=>{
-                scrapeTransactionData(scrapeKwargs);
+                scrapeTransactionData(scrapeKwargs, rowHeaderText);
             }, 50);
             return;
         }
+    }
+    else if(!oldestDate) {
+        scrapeKwargs.notices.push(
+            "WARNING could not find any transaction dates, skipping"
+        );
+        // Go back to accounts list
+        clickAccountsButton();
+        delete scrapeKwargs.accountingId;
+        delete scrapeKwargs.chaseId;
+        setTimeout(()=>{
+            scrapeData(scrapeKwargs);
+        });
+        return;
     }
 
     // Loop through and collect data
@@ -499,7 +522,7 @@ async function scrapeTransactionData(scrapeKwargs) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("WARNING skipping row due to bad date, on page " + accountLinkHeader);
+            scrapeKwargs.notices.push("WARNING skipping row due to unreadable date, " + rowHeaderText);
             continue;
         }
         log("parsing string " + dateStr)
@@ -523,7 +546,7 @@ async function scrapeTransactionData(scrapeKwargs) {
         // Negative number results in DEBIT adj to plig
         // account (Expense account with debit balance).
         const amountCents = parseChaseAmountStringToCents(amountText);
-
+        const lastName = rowHeaderText.split(" ")[0];
         let csvRow;
         let csvPlugRow;
         const data = {
@@ -896,7 +919,7 @@ const TESTS = [
                     }
                     const loaderElem = document.querySelector(
                         getElementSelector("transactionTableLoader")
-                    ) ||  document.querySelector(getElementSelector("accountsTableRow"));
+                    ) || document.querySelector(getElementSelector("transactionTable"));
                     if(!loaderElem) {
                         attemptNumber++;
                         if(attemptNumber > 100) {

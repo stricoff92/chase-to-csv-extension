@@ -69,9 +69,7 @@ function updateDebugMessage(msg) {
 }
 
 function getDefaultStartEndDate(isoDate) {
-    // .map(parseInt); results in NaN values, not sure why.
     const [yearInt, monthInt, _dayInt] = isoDate.split("-").map(v=> parseInt(v));
-
     const prevMonthInt = monthInt == 1 ? 12 : monthInt - 1;
     const prevYearInt = prevMonthInt != 12 ? yearInt : yearInt - 1;
     let prevDayStart = 1;
@@ -246,12 +244,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const detaultDates = getDefaultStartEndDate(
         (new Date()).toISOString().slice(0, 10)
     );
-    document.getElementById("new-scrape-start-date-input").value = (
-        detaultDates.start
-    );
-    document.getElementById("new-scrape-end-date-input").value = (
-        detaultDates.end
-    );
+    if(detaultDates.start && detaultDates.end) {
+        document.getElementById("new-scrape-start-date-input").value = (
+            detaultDates.start
+        );
+        document.getElementById("new-scrape-end-date-input").value = (
+            detaultDates.end
+        );
+    }
 
     document.getElementById("start-health-check-btn").addEventListener("click", () => {
         const tabQueryParams = {
