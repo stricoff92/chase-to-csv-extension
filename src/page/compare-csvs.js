@@ -1,6 +1,6 @@
 
 
-async function csvToArray(fileHandle, columns) {
+async function csvToArray(fileHandle, columns, prefixColCount) {
     return new Promise(resolve => {
         const reader = new FileReader();
         reader.readAsText(fileHandle, "UTF-8");
@@ -10,8 +10,9 @@ async function csvToArray(fileHandle, columns) {
             csvText.split("\n").forEach(rowText => {
                 const rowObj = {};
                 const rowArr = rowText.split(",");
+
                 columns.forEach((colName, colNameIx) => {
-                    rowObj[colName] = rowArr[colNameIx];
+                    rowObj[colName] = rowArr[colNameIx + prefixColCount];
                 });
                 rowObj.cr = parseFloat(rowObj.cr);
                 rowObj.dr = parseFloat(rowObj.dr);
@@ -42,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Preload form
     const onLoadKeys = [
         'csvColumns',
+        'prefixColumns',
         'plugAccountId',
     ];
     chrome.storage.local.get(onLoadKeys, (result) => {
@@ -50,6 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if(result.plugAccountId) {
             document.querySelector("#plug-account-id-input").value = result.plugAccountId;
+        }
+        if(result.prefixColumns) {
+            const pcc = JSON.parse(result.prefixColumns).length;
+            document.querySelector("#prefix-column-count-input").value = pcc;
         }
     });
 
@@ -88,6 +94,11 @@ document.addEventListener("DOMContentLoaded", () => {
             errors.push("invalid outflow threshold");
         }
 
+        const prefixColCount = parseInt(document.querySelector("#prefix-column-count-input").value || 0);
+        if(prefixColCount < 0) {
+            errors.push("invalid number of prefix columns");
+        }
+
         const fileInputBase = document.getElementById("base-csv-file-input");
         const fileInputCurr = document.getElementById("current-csv-file-input");
         if(!fileInputBase.value || !fileInputCurr.value) {
@@ -108,8 +119,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.getElementById("data-entry-form").style.display = "none";
 
-        const baseCSVdata = await csvToArray(fileBase, csvColumns);
-        const currCSVdata = await csvToArray(fileCurr, csvColumns);
+        const baseCSVdata = await csvToArray(fileBase, csvColumns, prefixColCount);
+        const currCSVdata = await csvToArray(fileCurr, csvColumns, prefixColCount);
         const summaries = getAccountSummaries(
             currCSVdata,
             baseCSVdata,
