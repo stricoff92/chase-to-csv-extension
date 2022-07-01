@@ -208,6 +208,10 @@ function clickSeeAllAccountsLinkIfItsThere() {
     element.click();
 }
 
+function scrollToBottom() {
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
 function canViewMoreAccounts() {
     return !!document.querySelector(getElementSelector("viewMoreAccountsLinkContainer"));
 }
@@ -450,6 +454,7 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
     );
     if(loaderElem) {
         log("found transactions loading element, waiting..");
+        scrollToBottom();
         setTimeout(()=>{
             scrapeTransactionData(scrapeKwargs, rowHeaderText);
         }, 50);
