@@ -651,6 +651,14 @@ function is_USCIS_Check(memo) {
     );
 }
 
+function is_IND_ID_check(memo) {
+    const lcm = memo.toLowerCase();
+    return Boolean(
+        lcm.indexOf("ind id") != -1
+        && [...lcm.matchAll(/ind\sid\:\d{4,}/g)].length > 0
+    );
+}
+
 function abbreviateDescription(row) {
     let memoParts = [];
 
@@ -667,6 +675,18 @@ function abbreviateDescription(row) {
         // Check number.
         let checkNumPart = row.descriptionText.replace("#", "").replace(/\s/g, '');
         memoParts.push(checkNumPart);
+    }
+    else if(is_IND_ID_check(row.descriptionText)) {
+        const idMatches = [
+            ...row.descriptionText
+                .toLowerCase()
+                .matchAll(/ind\sid\:\d{4,}/g)
+        ];
+        const matchCt = idMatches.length;
+        if(matchCt == 0) {
+            throw new Error("Could not extract IND id check number")
+        }
+        memoParts.push(idMatches[matchCt - 1][0]);
     }
     else if (is_USCIS_Check(row.descriptionText)){
         const idMatches = [
