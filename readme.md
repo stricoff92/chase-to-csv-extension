@@ -10,14 +10,17 @@
 ```python
 # Transaction Filters
 [
-    {"type":"include", "AND":[], "OR":[]},
-    {"type":"exclude", "AND":[], "OR":[]},
+    {"TYPE":"include", "AND":[], "OR":[]},
+    {"TYPE":"exclude", "AND":[], "OR":[]},
 ]
 ```
 
 
 ```python
 # Account Filters
-["account","memo","dr","cr"]
+[
+    {"INCLUDE":[]},
+    {"EXCLUDE":[]},
+]
 ```
 
