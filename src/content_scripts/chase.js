@@ -50,7 +50,7 @@ function updateLastRunData(scrapeKwargs) {
 
 const elementSelectors = new Map([
     [
-        'tableContainer',
+        'tableContainer', // wraps a shadowroot which contains the table
         '#accountsTableAG1Table0',
     ], [
         'viewMoreAccountsLinkContainer',
