@@ -50,8 +50,9 @@ function updateLastRunData(scrapeKwargs) {
 
 const elementSelectors = new Map([
     [
-        'tableContainer',
-        '#accountsTableAG1Table0',
+        'tableContainer', // wraps a shadowroot which contains the table
+        // '#accountsTableAG1Table0',
+        '#account-table-DDA',
     ], [
         'viewMoreAccountsLinkContainer',
         '#seeAllAccountsAG1Table',
@@ -349,7 +350,9 @@ async function scrapeData(scrapeKwargs) {
         // Navigate to the account page
         log("clicking account link " + rowHeaderText);
         scrapeKwargs.linksClicked.push(rowHeaderText);
-        tr.querySelector("a").click();
+        setTimeout(() => {
+            tr.querySelector("a").click();
+        }, 50);
 
         // Check if extension has bank account number saved.
         setTimeout(async ()=>{
