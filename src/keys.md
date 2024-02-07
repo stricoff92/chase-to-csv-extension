@@ -19,7 +19,8 @@
  - `debugMessage`   event that indicates a new debug message as be created
  - `healthCheckStarted`
  - `healthCheckStopped`
-
+ - `BalanceScrapeStarted`
+ - `BalanceScrapeStopped`
 
 ### Row Filters:
 
