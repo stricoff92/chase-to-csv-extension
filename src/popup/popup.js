@@ -175,7 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         sendResponse(true);
     });
 
-    document.querySelector("#start-balance-scrape-from-date-input").value = (
+    document.querySelector("#start-balance-scrape-end-date-input").value = (
         (new Date()).toISOString().slice(0, 10)
     )
 
@@ -257,6 +257,34 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
     }
 
+
+    document.getElementById("start-balance-scrape-btn").addEventListener("click", () => {
+        const tabQueryParams = {
+            active: true,
+            currentWindow: true,
+            url: [
+                "https://*.chase.com/*",
+            ],
+        };
+        chrome.tabs.query(tabQueryParams, (tabs) => {
+            if(tabs.length == 0) {
+                alert("Not on chase website. Could not generate balance report.")
+                return;
+            }
+            const endDate = document.getElementById("start-balance-scrape-end-date-input").value;
+            const payload = {
+                event: "BalanceScrapeStarted",
+                endDate,
+            }
+            chrome.tabs.sendMessage(
+                tabs[0].id,
+                payload,
+                ()=>{
+                    setPopupRunning();
+                },
+            )
+        });
+    })
     document.getElementById("start-health-check-btn").addEventListener("click", () => {
         const tabQueryParams = {
             active: true,
