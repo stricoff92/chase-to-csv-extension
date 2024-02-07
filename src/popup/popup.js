@@ -175,6 +175,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         sendResponse(true);
     });
 
+    document.querySelector("#start-balance-scrape-from-date-input").value = (
+        (new Date()).toISOString().slice(0, 10)
+    )
+
     const onLoadKeys = [
         'onPage',
         'running',
