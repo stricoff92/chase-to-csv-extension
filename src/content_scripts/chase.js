@@ -382,7 +382,7 @@ async function scrapeData(scrapeKwargs) {
         scrapeKwargs.linksClicked.push(rowHeaderText);
         setTimeout(() => {
             tr.querySelector("a").click();
-        }, 50);
+        }, 150);
 
         // Check if extension has bank account number saved.
         setTimeout(async ()=>{
@@ -414,7 +414,7 @@ async function scrapeData(scrapeKwargs) {
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId}, rowHeaderText);
             });
-        }, 200);
+        }, 300);
         return;
     }
     chrome.storage.local.set({running: false}, ()=> {
