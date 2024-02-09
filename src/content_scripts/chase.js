@@ -185,14 +185,16 @@ function main () {
                     return;
                 }
                 const lookup = await getLookupTable();
-                sendResponse(true);
+                // sendResponse(true);
                 chrome.storage.local.set({running: true}, ()=>{
                     createBalanceCSVLoopAccounts({
                         endDate: request.endDate,
                         lookup,
                         linksClicked: [],
                         resultRows: [[
-                            "name", "chase_id", "accounting_id", "balance",
+                            "name",
+                            "chase_id", "accounting_id",
+                            "balance_transaction_date", "balance",
                         ]],
                         notices: [`INFO Balance Scrape Started, KWARGS ${JSON.stringify(request)}`],
                     });
@@ -294,6 +296,7 @@ async function getChaseAccountNumberFromModalAndClose() {
 async function waitForElement(selector) {
     return new Promise((resolve) => {
         const inner = () => {
+            log("waiting for element: " + selector);
             const elem = document.querySelector(selector);
             if (elem) {
                 resolve(elem);
@@ -847,15 +850,15 @@ function processRow(row, rowFilters, csvRowNames) {
  *
  */
 async function createBalanceCSVLoopAccounts(scrapeKwargs) {
-    log("createBalanceCSVLoopAccounts() called with data" + JSON.stringify(scrapeKwargs));
-    console.log({scrapeKwargs});
+    log("createBalanceCSVLoopAccounts() called");
+    // console.log({scrapeKwargs});
 
     const tableContainer = await waitForElement(getElementSelector("tableContainer"))
     const table = getAccountTableFromContainer(tableContainer);
     const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
     log("searching " + tableRows.length + " rows for unclicked links");
 
-    for(let i=0; i< tableRows.length && i < scrapeKwargs.maxAccounts; i++) {
+    for(let i=0; i< tableRows.length; i++) {
         /* This forloop iterates until finds an element to process.
          *   After processing 1x element the forloop BREAKs.
         */
@@ -869,7 +872,7 @@ async function createBalanceCSVLoopAccounts(scrapeKwargs) {
         // update progress bar
         chrome.runtime.sendMessage({ event: "progressBar", data: {
             value: i + 1,
-            max: Math.min(tableRows.length, scrapeKwargs.maxAccounts),
+            max: tableRows.length,
         }});
 
         // Navigate to the account page
@@ -979,7 +982,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
             oldestDate = parseChaseDateString(rowDateStr);
         }
     }
-    if(oldestDate && oldestDate > startDateObj) {
+    if(oldestDate && oldestDate > endDateObj) {
         // We need to go back further //
         const seeMoreBtn = document.querySelector(
             getElementSelector("seeMoreTransactions")
@@ -1029,7 +1032,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
         if(!isLastRow && rowDateObj > endDateObj) {
             continue;
         }
-        if(isLastRow || (rowDateObj <= startDateObj)) {
+        if(isLastRow || (rowDateObj <= endDateObj)) {
             balanceRowFound = true;
             break;
         }
@@ -1059,12 +1062,20 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
 }
 
 function outputBalanceReportCSV(rows, notices) {
+    log(`writing ${rows.length} rows to csv file`);
     const ts = getFileNameTimestamp()
     const csvLink = document.createElement("a");
     csvLink.download = `balances-${ ts }.csv`;
     const csv = rows.map((v) => {return v.join(',')}).join('\n');
     csvLink.href = encodeURI("data:text/csv," + csv);
     csvLink.click();
+
+    log(`writing ${notices.length} lines to text file`);
+    const logLink = document.createElement("a");
+    logLink.download = `balances-${ ts }.txt`;
+    const logLines = notices.join('\n');
+    logLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(logLines);
+    logLink.click();
 }
 
 /*

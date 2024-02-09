@@ -156,16 +156,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse)=> {
-        if(request.event === "onPage") {
+        const setPopupOnPageEvents = [
+            'onPage', 'scrapeStopped', 'healthCheckStopped', 'BalanceScrapeStopped'];
+
+        if(setPopupOnPageEvents.indexOf(request.event) != -1) {
             setPopupOnPage();
         } else if (request.event === "offPage") {
             setPopupOffPage();
         } else if (request.event === "scrapeStarted") {
             setPopupRunning();
-        } else if (request.event === "scrapeStopped") {
-            setPopupOnPage();
-        } else if (request.event == "healthCheckStopped") {
-            setPopupOnPage();
         } else if (request.event === "progressBar") {
             updateProgress(request.data.value, request.data.max);
         } else if (request.event === "debugMessage") {
