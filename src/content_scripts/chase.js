@@ -508,7 +508,7 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
     const rows = table.querySelectorAll("tr");
     if(rows.length < 2) {
         scrapeKwargs.notices.push(
-            "WARNING skipping sub account, no transaction rows found."
+            `WARNING skipping sub account ${rowHeaderText}, no transaction rows found.`
         );
         clickAccountsButton();
         setTimeout(()=>{
