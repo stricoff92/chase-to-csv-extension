@@ -193,8 +193,10 @@ function main () {
                         linksClicked: [],
                         resultRows: [[
                             "name",
-                            "chase_id", "accounting_id",
-                            "balance_transaction_date", "balance",
+                            "chase_id",
+                            "accounting_id",
+                            "balance_transaction_date",
+                            `balance_on_${request.endDate}`,
                         ]],
                         notices: [`INFO Balance Scrape Started, KWARGS ${JSON.stringify(request)}`],
                     });
