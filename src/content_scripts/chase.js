@@ -567,7 +567,8 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("WARNING skipping row due to unreadable date, " + rowHeaderText);
+            scrapeKwargs.notices.push(
+                "WARNING skipping row due to unreadable date, " + rowHeaderText + ", data: " + dateStr);
             continue;
         }
         log("parsing string " + dateStr)
@@ -988,6 +989,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
             getElementSelector("seeMoreTransactions")
         );
         if (seeMoreBtn) {
+            log("clicking see more transactions button...");
             seeMoreBtn.click();
             setTimeout(()=>{
                 scrapeBalanceData(scrapeKwargs, rowHeaderText);
@@ -1011,7 +1013,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
     // We've gone back far enough //
 
     // Loop through rows until a "balance row" is found
-    let prevDateStr, isLastRow, row, balanceRowFound = false;
+    let prevDateStr, isLastRow, row, balanceRowFound = false, balanceRowDateStr;
     for(let i=1; i<rows.length; i++) {
         isLastRow = i == (rows.length - 1);
         row = rows[i];
@@ -1024,7 +1026,8 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("WARNING skipping row due to unreadable date, " + rowHeaderText);
+            scrapeKwargs.notices.push(
+                "WARNING skipping row due to unreadable date, " + rowHeaderText + ", date: " + dateStr);
             continue;
         }
         log("parsing string " + dateStr)
@@ -1034,6 +1037,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
         }
         if(isLastRow || (rowDateObj <= endDateObj)) {
             balanceRowFound = true;
+            balanceRowDateStr = dateStr.replace(/,/g, '');
             break;
         }
     }
@@ -1046,6 +1050,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
             rowHeaderText,
             scrapeKwargs.chaseId,
             scrapeKwargs.accountingId,
+            balanceRowDateStr,
             amount,
         ];
         scrapeKwargs.resultRows.push(csvRow);
