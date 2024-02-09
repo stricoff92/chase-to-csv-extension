@@ -881,7 +881,7 @@ async function createBalanceCSVLoopAccounts(scrapeKwargs) {
         scrapeKwargs.linksClicked.push(rowHeaderText);
         setTimeout(() => {
             tr.querySelector("a").click();
-        }, 50);
+        }, 150);
 
         // Grab information from subaccount page
         setTimeout(async ()=>{
@@ -911,7 +911,7 @@ async function createBalanceCSVLoopAccounts(scrapeKwargs) {
             setTimeout(()=> {
                 scrapeBalanceData({...scrapeKwargs, accountingId, chaseId}, rowHeaderText);
             });
-        }, 200);
+        }, 300);
         return;
     }
 
