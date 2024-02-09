@@ -87,6 +87,9 @@ const elementSelectors = new Map([
         "transactionRowAmount",
         "td.amount",
     ], [
+        "transactionRowBalance",
+        "td.balance",
+    ], [
         "fullAccountNumberLinkContainer",
         ".routing-info",
     ], [
@@ -128,7 +131,7 @@ function main () {
 
     chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
          if (request.event === "scrapeStarted") {
-            console.log("received event to start scraping");
+            log("received event to start scraping");
             console.log(request);
             if(onPage) {
                 const isRunning = await getRunning();
@@ -161,8 +164,9 @@ function main () {
                     }, 250);
                 });
             }
-        } else if (request.event === "healthCheckStarted") {
-            console.log("received event to start health check");
+        }
+        else if (request.event === "healthCheckStarted") {
+            log("received event to start health check");
             console.log(request);
             if(onPage) {
                 const isRunning = await getRunning();
@@ -170,6 +174,33 @@ function main () {
                     return;
                 }
                 chrome.storage.local.set({running: true}, runHealthCheck);
+            }
+        }
+        else if (request.event === "BalanceScrapeStarted") {
+            log("received event to start balance scrape");
+            console.log(request);
+            if(onPage) {
+                const isRunning = await getRunning();
+                if(isRunning) {
+                    return;
+                }
+                const lookup = await getLookupTable();
+                // sendResponse(true);
+                chrome.storage.local.set({running: true}, ()=>{
+                    createBalanceCSVLoopAccounts({
+                        endDate: request.endDate,
+                        lookup,
+                        linksClicked: [],
+                        resultRows: [[
+                            "name",
+                            "chase_id",
+                            "accounting_id",
+                            "balance_transaction_date",
+                            `balance_on_${request.endDate}`,
+                        ]],
+                        notices: [`INFO Balance Scrape Started, KWARGS ${JSON.stringify(request)}`],
+                    });
+                });
             }
         }
         // // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
@@ -267,6 +298,7 @@ async function getChaseAccountNumberFromModalAndClose() {
 async function waitForElement(selector) {
     return new Promise((resolve) => {
         const inner = () => {
+            log("waiting for element: " + selector);
             const elem = document.querySelector(selector);
             if (elem) {
                 resolve(elem);
@@ -352,7 +384,7 @@ async function scrapeData(scrapeKwargs) {
         scrapeKwargs.linksClicked.push(rowHeaderText);
         setTimeout(() => {
             tr.querySelector("a").click();
-        }, 50);
+        }, 150);
 
         // Check if extension has bank account number saved.
         setTimeout(async ()=>{
@@ -384,7 +416,7 @@ async function scrapeData(scrapeKwargs) {
             setTimeout(()=> {
                 scrapeTransactionData({...scrapeKwargs, accountingId, chaseId}, rowHeaderText);
             });
-        }, 200);
+        }, 300);
         return;
     }
     chrome.storage.local.set({running: false}, ()=> {
@@ -429,6 +461,9 @@ function parseChaseAmountStringToCents(amountString) {
         throw new Error("could not parse amount text"); // ends with .DIGITDIGIT
     }
     return Math.round(parseFloat(amountString.replace(/[^\-0-9]/g, "")));
+}
+function parseChaseAmountStringToDollarsFloat(amountString) {
+    return parseChaseAmountStringToCents(amountString) / 100;
 }
 
 
@@ -534,7 +569,8 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
             dateStr = prevDateStr;
         } else {
             log("skipping row due to bad date");
-            scrapeKwargs.notices.push("WARNING skipping row due to unreadable date, " + rowHeaderText);
+            scrapeKwargs.notices.push(
+                "WARNING skipping row due to unreadable date, " + rowHeaderText + ", data: " + dateStr);
             continue;
         }
         log("parsing string " + dateStr)
@@ -806,6 +842,247 @@ function processRow(row, rowFilters, csvRowNames) {
         }
     }
     return csvRow;
+}
+
+/*
+ *
+ *
+ * BALANCE
+ * REPORT
+ *
+ *
+ */
+async function createBalanceCSVLoopAccounts(scrapeKwargs) {
+    log("createBalanceCSVLoopAccounts() called");
+    // console.log({scrapeKwargs});
+
+    const tableContainer = await waitForElement(getElementSelector("tableContainer"))
+    const table = getAccountTableFromContainer(tableContainer);
+    const tableRows = table.querySelectorAll(getElementSelector("accountsTableRow"));
+    log("searching " + tableRows.length + " rows for unclicked links");
+
+    for(let i=0; i< tableRows.length; i++) {
+        /* This forloop iterates until finds an element to process.
+         *   After processing 1x element the forloop BREAKs.
+        */
+        const tr = tableRows[i];
+        const rowHeader = tr.querySelector(getElementSelector("accountsTableRowHeader"));
+        const rowHeaderText = rowHeader.innerText
+        if(scrapeKwargs.linksClicked.indexOf(rowHeaderText) != -1) {
+            continue;
+        }
+
+        // update progress bar
+        chrome.runtime.sendMessage({ event: "progressBar", data: {
+            value: i + 1,
+            max: tableRows.length,
+        }});
+
+        // Navigate to the account page
+        log("clicking account link " + rowHeaderText);
+        scrapeKwargs.linksClicked.push(rowHeaderText);
+        setTimeout(() => {
+            tr.querySelector("a").click();
+        }, 150);
+
+        // Grab information from subaccount page
+        setTimeout(async ()=>{
+            await openAccountDetailsModal();
+            const chaseId = await getChaseAccountNumberFromModalAndClose();
+            log("on transaction page for account number " + chaseId);
+            if(!chaseId) {
+                alert(
+                    "ERROR: could not get chase account ID from webpage: " + rowHeaderText
+                );
+                return;
+            }
+            let accountingId = "N/A";
+            if(scrapeKwargs.lookup.has(chaseId)) {
+                accountingId = scrapeKwargs.lookup.get(chaseId);
+            } else {
+                log("no ACCOUNTING ID found for this account");
+                scrapeKwargs.notices.push(
+                    `WARNING CHASE account ${rowHeaderText} (${chaseId}) no ACCOUNTING ID found`
+                );
+            }
+
+            log("row has associated ACC account " + accountingId);
+            scrapeKwargs.notices.push(
+                `INFO Scraping CHASE account ${rowHeaderText} (${chaseId}) matching id: ${accountingId}`
+            );
+            setTimeout(()=> {
+                scrapeBalanceData({...scrapeKwargs, accountingId, chaseId}, rowHeaderText);
+            });
+        }, 300);
+        return;
+    }
+
+    // All links are clicked
+    chrome.storage.local.set({running: false}, ()=> {
+        chrome.runtime.sendMessage({event: "BalanceScrapeStopped"})
+    });
+    outputBalanceReportCSV(
+        scrapeKwargs.resultRows, scrapeKwargs.notices);
+}
+
+async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
+    // Check for any takeovers
+    const continueWithActivity = document.querySelector(
+        getElementSelector("continueWithActivityBtn")
+    );
+    if(continueWithActivity) {
+        log("clicking continue with activity button");
+        scrapeKwargs.notices.push("WARNING: clicking 'continue with activity' button");
+        continueWithActivity.click();
+        setTimeout(()=>{
+            scrapeBalanceData(scrapeKwargs, rowHeaderText);
+        });
+        return;
+    }
+
+    // Wait for table to load
+    log("waiting for transaction table to load");
+    const table = await waitForElement(getElementSelector("transactionTable"));
+
+        // Waiting for "see all activity" rows to load
+    const loaderElem = document.querySelector(
+        getElementSelector("transactionTableLoader")
+    );
+    if(loaderElem) {
+        log("found transactions loading element, waiting..");
+        scrollToBottom();
+        setTimeout(()=>{
+            scrapeBalanceData(scrapeKwargs, rowHeaderText);
+        }, 50);
+        return;
+    }
+
+    const endDateObj = parseISODateString(scrapeKwargs.endDate);
+    // Keep clicking "See more activity" until
+    //  - oldest transaction date  > endDate
+    //  - OR the see more activity button no longer appears.
+    const rows = table.querySelectorAll("tr");
+    if(rows.length < 2) {
+        scrapeKwargs.notices.push(
+            `WARNING skipping ${rowHeaderText}, no transaction rows found.`
+        );
+        clickAccountsButton();
+        setTimeout(()=>{
+            createBalanceCSVLoopAccounts(scrapeKwargs);
+        });
+        return;
+    }
+    if(rows[0].classList[0] !== 'column-headers') {
+        alert("ERROR: could not find transaction table heading row.")
+        return;
+    }
+    let oldestDate;
+    for(let i=1; i<rows.length; i++) {
+        let rowDateStr = rows[i].querySelector(
+            getElementSelector("transactionRowDate")
+        ).innerText;
+        if(rowDateStr && isChaseDateString(rowDateStr)) {
+            oldestDate = parseChaseDateString(rowDateStr);
+        }
+    }
+    if(oldestDate && oldestDate > endDateObj) {
+        // We need to go back further //
+        const seeMoreBtn = document.querySelector(
+            getElementSelector("seeMoreTransactions")
+        );
+        if (seeMoreBtn) {
+            log("clicking see more transactions button...");
+            seeMoreBtn.click();
+            setTimeout(()=>{
+                scrapeBalanceData(scrapeKwargs, rowHeaderText);
+            }, 50);
+            return;
+        }
+    }
+    else if(!oldestDate) {
+        scrapeKwargs.notices.push(
+            "WARNING could not find any transaction dates, skipping"
+        );
+        // Go back to accounts list
+        clickAccountsButton();
+        delete scrapeKwargs.accountingId;
+        delete scrapeKwargs.chaseId;
+        setTimeout(()=>{
+            createBalanceCSVLoopAccounts(scrapeKwargs);
+        });
+        return;
+    }
+    // We've gone back far enough //
+
+    // Loop through rows until a "balance row" is found
+    let prevDateStr, isLastRow, row, balanceRowFound = false, balanceRowDateStr;
+    for(let i=1; i<rows.length; i++) {
+        isLastRow = i == (rows.length - 1);
+        row = rows[i];
+        const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
+        let dateStr = dateTd.innerText;
+        log("found date string " + dateStr)
+        if(dateStr && isChaseDateString(dateStr)) {
+            prevDateStr = dateStr;
+        } else if(prevDateStr) {
+            dateStr = prevDateStr;
+        } else {
+            log("skipping row due to bad date");
+            scrapeKwargs.notices.push(
+                "WARNING skipping row due to unreadable date, " + rowHeaderText + ", date: " + dateStr);
+            continue;
+        }
+        log("parsing string " + dateStr)
+        const rowDateObj = parseChaseDateString(dateStr);
+        if(!isLastRow && rowDateObj > endDateObj) {
+            continue;
+        }
+        if(isLastRow || (rowDateObj <= endDateObj)) {
+            balanceRowFound = true;
+            balanceRowDateStr = dateStr.replace(/,/g, '');
+            break;
+        }
+    }
+    if(balanceRowFound) {
+        const amountText = row.querySelector(
+            getElementSelector("transactionRowBalance")
+        ).innerText;
+        const amount = parseChaseAmountStringToDollarsFloat(amountText);
+        const csvRow = [
+            rowHeaderText,
+            scrapeKwargs.chaseId,
+            scrapeKwargs.accountingId,
+            balanceRowDateStr,
+            amount,
+        ];
+        scrapeKwargs.resultRows.push(csvRow);
+    }
+
+    delete scrapeKwargs.accountingId;
+    delete scrapeKwargs.chaseId;
+
+    // Go back to accounts list
+    clickAccountsButton();
+    setTimeout(()=>{
+        createBalanceCSVLoopAccounts(scrapeKwargs);
+    });
+}
+
+function outputBalanceReportCSV(rows, notices) {
+    log(`writing ${rows.length} rows to csv file`);
+    const ts = getFileNameTimestamp()
+    const csvLink = document.createElement("a");
+    csvLink.download = `balances-${ ts }.csv`;
+    const csv = rows.map((v) => {return v.join(',')}).join('\n');
+    csvLink.href = encodeURI("data:text/csv," + csv);
+    csvLink.click();
+
+    log(`writing ${notices.length} lines to text file`);
+    const logLink = document.createElement("a");
+    logLink.download = `balances-${ ts }.txt`;
+    const logLines = notices.join('\n');
+    logLink.href = "data:text/plain;charset=utf-8," + encodeURIComponent(logLines);
+    logLink.click();
 }
 
 /*

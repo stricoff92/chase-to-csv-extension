@@ -145,6 +145,21 @@
                 background-color:#b3a9ff;
                 color:#0a0054;
             }
+            #start-balance-scrape-btn {
+                margin-top: 0.6rem;
+                font-weight: bold;
+                font-size: 150%;
+                background-color:#d1cbff;
+                color:#0a0054;
+                border-radius: 10px;
+                padding:12px;
+                cursor: pointer;
+            }
+            #start-balance-scrape-btn:hover {
+                cursor: pointer;
+                background-color:#b3a9ff;
+                color:#0a0054;
+            }
             .lds-ring {
                 display: inline-block;
                 position: relative;
@@ -218,6 +233,28 @@
                 <button id="start-health-check-btn">
                     Run Health Check
                 </button>
+            </div>
+            <hr>
+            <div
+                style="display:flex; justify-content:space-between; margin-top: 1rem; margin-bottom: 1rem;"
+            >
+                <div>
+                    <div id="start-crawl-section-heading">
+                        Get Account Balances
+                    </div>
+                    <div>
+                        <span style="font-size:120%; font-style:italic;">End Date:</span>
+                        <input
+                            type="date"
+                            id="start-balance-scrape-end-date-input"
+                        >
+                    </div>
+                    <div>
+                        <button id="start-balance-scrape-btn">
+                            Generate Acc. Balance CSV
+                        </button>
+                    </div>
+                </div>
             </div>
             <hr>
             <div id="start-crawl-section-heading">

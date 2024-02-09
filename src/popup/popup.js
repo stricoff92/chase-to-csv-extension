@@ -156,16 +156,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse)=> {
-        if(request.event === "onPage") {
+        const setPopupOnPageEvents = [
+            'onPage', 'scrapeStopped', 'healthCheckStopped', 'BalanceScrapeStopped'];
+
+        if(setPopupOnPageEvents.indexOf(request.event) != -1) {
             setPopupOnPage();
         } else if (request.event === "offPage") {
             setPopupOffPage();
         } else if (request.event === "scrapeStarted") {
             setPopupRunning();
-        } else if (request.event === "scrapeStopped") {
-            setPopupOnPage();
-        } else if (request.event == "healthCheckStopped") {
-            setPopupOnPage();
         } else if (request.event === "progressBar") {
             updateProgress(request.data.value, request.data.max);
         } else if (request.event === "debugMessage") {
@@ -174,6 +173,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         sendResponse(true);
     });
+
+    document.querySelector("#start-balance-scrape-end-date-input").value = (
+        (new Date()).toISOString().slice(0, 10)
+    )
 
     const onLoadKeys = [
         'onPage',
@@ -253,6 +256,34 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
     }
 
+
+    document.getElementById("start-balance-scrape-btn").addEventListener("click", () => {
+        const tabQueryParams = {
+            active: true,
+            currentWindow: true,
+            url: [
+                "https://*.chase.com/*",
+            ],
+        };
+        chrome.tabs.query(tabQueryParams, (tabs) => {
+            if(tabs.length == 0) {
+                alert("Not on chase website. Could not generate balance report.")
+                return;
+            }
+            const endDate = document.getElementById("start-balance-scrape-end-date-input").value;
+            const payload = {
+                event: "BalanceScrapeStarted",
+                endDate,
+            }
+            chrome.tabs.sendMessage(
+                tabs[0].id,
+                payload,
+                ()=>{
+                    setPopupRunning();
+                },
+            )
+        });
+    })
     document.getElementById("start-health-check-btn").addEventListener("click", () => {
         const tabQueryParams = {
             active: true,
