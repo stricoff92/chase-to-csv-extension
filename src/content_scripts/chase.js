@@ -52,7 +52,8 @@ const elementSelectors = new Map([
     [
         'tableContainer', // wraps a shadowroot which contains the table
         // '#accountsTableAG1Table0',
-        '#account-table-DDA',
+        // '#account-table-DDA',
+        "mds-data-table-for-accounts",
     ], [
         'viewMoreAccountsLinkContainer',
         '#seeAllAccountsAG1Table',
