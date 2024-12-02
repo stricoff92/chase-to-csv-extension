@@ -589,7 +589,9 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
         });
         return;
     } else {
-        if(rows[0].classList[0].indexOf('header-row') == -1) {
+        try {
+            validateRowsStartWithColumnHeadersRow(rows);
+        } catch (err) {
             alert("ERROR: could not find transaction table heading row.")
             return;
         }
