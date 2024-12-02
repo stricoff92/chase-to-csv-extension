@@ -71,28 +71,28 @@ const elementSelectors = new Map([
         "#continueWithActivity",
     ], [
         "transactionTable",
-        "#activityTableslideInActivity",
+        "#ACTIVITY-dataTableId-mds-diy-data-table",
     ], [
         "transactionTableLoader",
         ".loader-section",
     ], [
         "seeMoreTransactions",
-        "#seeMore",
+        "#see-more-button_id",
     ],[
         "transactionRowDate",
-        "td.date",
+        "th",
     ], [
         "transactionRowDescription",
-        "td.description",
+        "td:nth-of-type(1)",
     ], [
         "transactionRowAmount",
-        "td.amount",
+        "td:nth-of-type(3)",
     ], [
         "transactionRowBalance",
-        "td.balance",
+        "td:nth-of-type(4)",
     ], [
         "fullAccountNumberLinkContainer",
-        ".routing-info",
+        "#primary-additional-item-account-and-routing-number",
     ], [
         "accountNumber",
         ".account-number",
@@ -207,7 +207,27 @@ function main () {
         // // https://stackoverflow.com/questions/48107746/chrome-extension-message-not-sending-response-undefined
         return true;
     });
+}
 
+function validateTransactionTableHasExpectedColumnHeaders(thead) {
+    // chase removed sensible class names from their td elements,
+    // so lets look at the column headers in <thead> to make sure they match
+    // expected values.
+    const tableHeadElements = thead.querySelectorAll("th");
+    const expectedHeaderValues = [
+        "Date",
+        "Description",
+        "Type",
+        "Amount",
+        "Balance",
+    ];
+    for(let i=0; i<expectedHeaderValues.length; i++) {
+        if(tableHeadElements[i].innerText != expectedHeaderValues[i]) {
+            throw new Error(
+                `Expected column header ${expectedHeaderValues[i]} at index ${i}, got ${tableHeadElements[i].innerText}`
+            );
+        }
+    }
 }
 
 function processEventFoundTable() {
@@ -269,7 +289,8 @@ async function openAccountDetailsModal() {
         const innerWait = () => {
             const selector = getElementSelector("fullAccountNumberLinkContainer");
             try {
-                document.querySelectorAll(selector)[0].childNodes[0].shadowRoot.querySelector("a").click();
+                // document.querySelectorAll(selector)[0].childNodes[0].shadowRoot.querySelector("a").click();
+                document.querySelector(selector).click();
                 resolve();
             } catch(err) {
                 console.warn("could not find 'see full account number, waiting'");
@@ -280,16 +301,39 @@ async function openAccountDetailsModal() {
     });
 }
 
-async function getChaseAccountNumberFromModalAndClose() {
+async function getChaseAccountNumberFromModal(closeModal) {
     return await new Promise(resolve => {
         const inner = () => {
-            const accountNumberContainer = document.querySelector(getElementSelector("accountNumber"));
-            if(accountNumberContainer && /^Account\snumber\n\d+$/.test(accountNumberContainer.innerText)) {
+            log("looking for account number...");
+            let accountNumberContainer;
+            try {
+                accountNumberContainer = (
+                    document
+                        .querySelector(getElementSelector("accountNumber"))
+                        .querySelector("mds-description-list")
+                        .shadowRoot.querySelector(".description-list")
+                );
+            } catch(err) {
+                log("error when querying for account number, will try again");
+                return setTimeout(inner, 200);
+            }
+            const containerParts = accountNumberContainer.innerText.split("\n");
+            log(`found inner text ${accountNumberContainer.innerText}, parts ${containerParts}`);
+            if(
+                accountNumberContainer
+                && containerParts.length == 4
+                && containerParts[0] == "Account number"
+                && /^\d+$/.test(containerParts[1])
+            ) {
                 const result = accountNumberContainer.innerText.split("\n")[1];
-                findAndCloseModal();
+                log(`found result ${result}`);
+                if(closeModal) {
+                    findAndCloseModal();
+                }
                 resolve(result);
             } else {
-                setTimeout(inner, 25);
+                log("could not find account number, trying again...");
+                return setTimeout(inner, 200);
             }
         }
         inner();
@@ -390,7 +434,7 @@ async function scrapeData(scrapeKwargs) {
         // Check if extension has bank account number saved.
         setTimeout(async ()=>{
             await openAccountDetailsModal();
-            const chaseId = await getChaseAccountNumberFromModalAndClose();
+            const chaseId = await getChaseAccountNumberFromModal(true);
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
                 alert(
@@ -454,12 +498,31 @@ function downloadCSVOutput(rows, notices) {
     );
 }
 
+function cleanAmountString(amountString) {
+    const cleanedChars = []
+    for(let i=0; i<amountString.length; i++) {
+        const originalChar = amountString.charAt(i);
+        const originalCharCode = originalChar.charCodeAt(0);
+        if(originalCharCode == 10) { // new line. number is repeated in markup due to accessibility?
+            break;
+        }
+        else if(originalCharCode == 8722) { // unicode minus sign, replace with ascii minus
+            cleanedChars.push("-");
+        }
+        else {
+            cleanedChars.push(originalChar);
+        }
+    }
+    return cleanedChars.join("");
+}
+
 function parseChaseAmountStringToCents(amountString) {
+    amountString = cleanAmountString(amountString);
     if(!/^\-?\$\d/.test(amountString)) {
-        throw new Error("could not parse amount text"); // starts with -$DIGIT
+        throw new Error(`could not parse amount text "${amountString}"`); // starts with -$DIGIT
     }
     if(!/\.\d{2}$/.test(amountString)) {
-        throw new Error("could not parse amount text"); // ends with .DIGITDIGIT
+        throw new Error(`could not parse amount text "${amountString}"`); // ends with .DIGITDIGIT
     }
     return Math.round(parseFloat(amountString.replace(/[^\-0-9]/g, "")));
 }
@@ -500,6 +563,9 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
         return;
     }
 
+    const thead = table.querySelector("thead");
+    validateTransactionTableHasExpectedColumnHeaders(thead);
+
     const startDateObj = parseISODateString(scrapeKwargs.startDate);
     const endDateObj = parseISODateString(scrapeKwargs.endDate);
 
@@ -517,7 +583,7 @@ async function scrapeTransactionData(scrapeKwargs, rowHeaderText) {
         });
         return;
     } else {
-        if(rows[0].classList[0] !== 'column-headers') {
+        if(rows[0].classList[0].indexOf('header-row') == -1) {
             alert("ERROR: could not find transaction table heading row.")
             return;
         }
@@ -889,7 +955,7 @@ async function createBalanceCSVLoopAccounts(scrapeKwargs) {
         // Grab information from subaccount page
         setTimeout(async ()=>{
             await openAccountDetailsModal();
-            const chaseId = await getChaseAccountNumberFromModalAndClose();
+            const chaseId = await getChaseAccountNumberFromModal(true);
             log("on transaction page for account number " + chaseId);
             if(!chaseId) {
                 alert(
@@ -973,7 +1039,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
         });
         return;
     }
-    if(rows[0].classList[0] !== 'column-headers') {
+    if(rows[0].classList[0].indexOf("header-row") == -1) {
         alert("ERROR: could not find transaction table heading row.")
         return;
     }
@@ -1177,10 +1243,27 @@ const TESTS = [
         name:"Can find show account id link",
         cb: async function() {
             await waitForElement(getElementSelector("fullAccountNumberLinkContainer"));
-            const anchor = document.querySelectorAll(getElementSelector("fullAccountNumberLinkContainer"))[0].childNodes[0].shadowRoot.querySelector("a");
-            if (!anchor) {
-                return "Could not find 'get account number' link"
+            const button = document.querySelector(getElementSelector("fullAccountNumberLinkContainer"));
+            if (!button) {
+                return "Could not find 'get account number' button";
             }
+            return;
+        },
+    },
+    {
+        name:"Can get account id from modal",
+        cb: async function() {
+            log("opening modal");
+            await openAccountDetailsModal();
+            log("getting chase account ID");
+            const chaseId = await getChaseAccountNumberFromModal(false);
+            if(!chaseId) {
+                return "could not get chase account ID from modal";
+            }
+            if(!confirm(`Is this the correct account number? ${chaseId}\n\nClick OK if the account number is correct.`)) {
+                return "could not get chase account ID from modal";
+            }
+            findAndCloseModal();
             return;
         },
     },
@@ -1254,6 +1337,33 @@ const TESTS = [
         },
     },
     {
+        name: "Can find expected transaction table column headers",
+        cb: async function() {
+            let errMsg = await new Promise((resolve) => {
+                let attemptNumber = 0
+                const inner = async () => {
+                    const table = await waitForElement(getElementSelector("transactionTable"));
+                    if(!table) {
+                        attemptNumber++;
+                        if(attemptNumber > 100) {
+                            return resolve("could not find transaction table")
+                        }
+                        setTimeout(inner, 100);
+                        return;
+                    }
+                    const thead = table.querySelector("thead");
+                    validateTransactionTableHasExpectedColumnHeaders(thead);
+                    setTimeout(resolve);
+                    return;
+                }
+                setTimeout(inner);
+            });
+            if(errMsg) {
+                return errMsg;
+            }
+        },
+    },
+    {
         name: "Can select transaction table rows",
         cb: async function() {
             let errMsg = await new Promise((resolve) => {
@@ -1277,8 +1387,9 @@ const TESTS = [
                         setTimeout(inner, 100);
                         return;
                     }
-                    else if(rows[0].classList[0] !== 'column-headers') {
-                        return resolve("expected first row to have column-heders class");
+                    else if(rows[0].classList[0].indexOf('header-row') == -1) {
+                        console.log("classlist0", rows[0].classList[0]);
+                        return resolve("expected first row to have \"header-row\" class name");
                     }
                     else if (rows[1].querySelectorAll("td").length < 4) {
                         return resolve("could not find table TD cells");
@@ -1348,6 +1459,7 @@ const TESTS = [
                 const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
                 if(dateTd) {
                     const text = dateTd.innerText;
+                    console.error(dateTd);
                     if(!text) {
                         continue;
                     }
