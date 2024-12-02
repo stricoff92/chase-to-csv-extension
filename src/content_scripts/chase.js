@@ -1382,6 +1382,11 @@ const TESTS = [
                         return;
                     }
                     const rows = table.querySelectorAll("tr");
+                    try {
+                        validateRowsStartWithColumnHeadersRow(rows);
+                    } catch (err) {
+                        return resolve("expected first row to have \"header-row\" class name");
+                    }
                     if(rows.length < 5) {
                         attemptNumber++;
                         if(attemptNumber > 100) {
@@ -1389,10 +1394,6 @@ const TESTS = [
                         }
                         setTimeout(inner, 100);
                         return;
-                    }
-                    else if(rows[0].classList[0].indexOf('header-row') == -1) {
-                        console.log("classlist0", rows[0].classList[0]);
-                        return resolve("expected first row to have \"header-row\" class name");
                     }
                     else if (rows[1].querySelectorAll("td").length < 4) {
                         return resolve("could not find table TD cells");
