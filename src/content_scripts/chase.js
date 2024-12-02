@@ -1459,7 +1459,6 @@ const TESTS = [
                 const dateTd = row.querySelector(getElementSelector("transactionRowDate"));
                 if(dateTd) {
                     const text = dateTd.innerText;
-                    console.error(dateTd);
                     if(!text) {
                         continue;
                     }
