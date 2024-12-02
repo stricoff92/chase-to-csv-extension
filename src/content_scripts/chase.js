@@ -230,6 +230,12 @@ function validateTransactionTableHasExpectedColumnHeaders(thead) {
     }
 }
 
+function validateRowsStartWithColumnHeadersRow(rows) {
+    if(rows[0].classList[0].indexOf("header-row") == -1) {
+        throw new Error("Could not find header row in transaction table rows list");
+    }
+}
+
 function processEventFoundTable() {
     log("<EVENT foundTable>");
     chrome.storage.local.get(['onPage'], (result) => {
@@ -1039,10 +1045,7 @@ async function scrapeBalanceData(scrapeKwargs, rowHeaderText) {
         });
         return;
     }
-    if(rows[0].classList[0].indexOf("header-row") == -1) {
-        alert("ERROR: could not find transaction table heading row.")
-        return;
-    }
+    validateRowsStartWithColumnHeadersRow(rows);
     let oldestDate;
     for(let i=1; i<rows.length; i++) {
         let rowDateStr = rows[i].querySelector(
