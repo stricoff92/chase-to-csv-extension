@@ -65,6 +65,7 @@ function updateProgress(value, max) {
 }
 
 function updateDebugMessage(msg) {
+    console.log('HCE Debug message: ' + msg);
     document.getElementById("debug-message").innerText = msg;
 }
 
