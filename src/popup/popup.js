@@ -65,6 +65,7 @@ function updateProgress(value, max) {
 }
 
 function updateDebugMessage(msg) {
+    console.log('HCE Debug message: ' + msg);
     document.getElementById("debug-message").innerText = msg;
 }
 
@@ -96,17 +97,20 @@ function getDefaultStartEndDate(isoDate) {
 
 const REQUIRED_CSV_COLUMNS = ['account', 'memo', 'dr', 'cr'];
 
+let loadPopup = true;
 document.addEventListener("DOMContentLoaded", async () => {
 
     let versionOk;
     try {
         versionOk = await validateExtensionVersion();
     } catch(err) {
+        loadPopup = false;
         setUpdateStatusNotice(
             "ERROR: Could not verify extension version."
         );
     }
     if(versionOk === false) {
+        loadPopup = false;
         setUpdateStatusNotice(
             "A new extension version is available. Please update."
         );
@@ -114,15 +118,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
         versionOk = validateChromeVersion();
     } catch(err) {
+        loadPopup = false;
         setUpdateStatusNotice(
             "ERROR: Could not verify chrome version."
         );
     }
     if(versionOk === false) {
+        loadPopup = false;
         setUpdateStatusNotice(
             "A new Chrome version is available. Please update."
         );
     }
+
+    if(!loadPopup) return;
 
     await new Promise(resolve => {
         chrome.tabs.query({url: ["https://*.chase.com/*"]}, (tabs) => {

@@ -54,12 +54,10 @@ const elementSelectors = new Map([
         // '#accountsTableAG1Table0',
         // '#account-table-DDA',
         "mds-data-table-for-accounts",
+        // "mds-tile#ACTIVITY_Id",
     ], [
         'viewMoreAccountsLinkContainer',
         '#seeAllAccountsAG1Table',
-    ], [
-        'viewAllAccountsLink',
-        '#requestAccounts',
     ], [
         "accountsTableRow",
         ".data-table-for-accounts__row",
@@ -1185,7 +1183,12 @@ async function selectAccountTable() {
     });
 }
 function clickAccountsButton() {
-    document.querySelector(getElementSelector("viewAllAccountsLink")).click();
+    log("clickAccountsButton()");
+    (document.querySelector("mds-breadcrumb")
+        .shadowRoot.querySelector("mds-link")
+        .shadowRoot.querySelector("a")
+        .click());
+    log("clickAccountsButton() done");
 }
 const TESTS = [
     {
@@ -1602,13 +1605,13 @@ async function _runHealthCheck() {
 
 
         if(TESTS[i] === WAIT_FOR_ACCOUNT_TABLE_TOKEN) {
-            log("waiting for table")
+            log("WAIT_FOR_ACCOUNT_TABLE_TOKEN")
             await selectAccountTable();
             log("found table")
             continue;
         }
 
-        log("running test index " + i);
+        log("running test index " + i + ` ${TESTS[i].name}`);
 
         let result;
         let passed;

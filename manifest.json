@@ -1,7 +1,7 @@
 {
   "name": "Bank to CSV",
   "description": "CSV Generating Extention",
-  "version": "1.6",
+  "version": "1.7",
   "manifest_version": 3,
   "background": {
     "service_worker": "src/background.js"
